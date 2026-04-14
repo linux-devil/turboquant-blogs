@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why Rotating Vectors Makes Compression Beautiful</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #12151c;
+    --bg3: #1a1f2e;
+    --blue: #4f9cf9;
+    --blue-dim: #2a5a9f;
+    --gold: #f5c842;
+    --gold-dim: #8a6f1a;
+    --green: #50d9a0;
+    --red: #f06060;
+    --purple: #b07aff;
+    --text: #e8eaf0;
+    --text-dim: #8892a4;
+    --text-dimmer: #4a5568;
+    --border: #1e2535;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lora', Georgia, serif;
+    line-height: 1.85;
+    font-size: 18px;
+    overflow-x: hidden;
+  }
+
+  /* ── GRAIN OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 1000; opacity: 0.4;
+  }
+
+  /* ── PROGRESS BAR ── */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--blue), var(--gold));
+    z-index: 999; transition: width 0.1s;
+    box-shadow: 0 0 8px var(--blue);
+  }
+
+  /* ── HEADER ── */
+  header {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center; padding: 4rem 2rem;
+    position: relative; overflow: hidden;
+  }
+
+  header canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0.15;
+  }
+
+  .hero-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; letter-spacing: 0.2em;
+    color: var(--blue); text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0; animation: fadeUp 0.8s 0.3s forwards;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.2rem, 6vw, 4.5rem);
+    font-weight: 700; line-height: 1.15;
+    max-width: 900px; margin-bottom: 1.5rem;
+    opacity: 0; animation: fadeUp 0.8s 0.5s forwards;
+  }
+
+  h1 em { color: var(--gold); font-style: italic; }
+
+  .hero-sub {
+    font-size: 1.1rem; color: var(--text-dim);
+    max-width: 600px; margin-bottom: 3rem;
+    opacity: 0; animation: fadeUp 0.8s 0.7s forwards;
+  }
+
+  .scroll-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--text-dimmer);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    opacity: 0; animation: fadeUp 0.8s 1.2s forwards;
+  }
+
+  .scroll-arrow {
+    width: 1px; height: 50px;
+    background: linear-gradient(to bottom, var(--blue), transparent);
+    margin: 1rem auto 0; animation: pulse 2s infinite;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main { max-width: 780px; margin: 0 auto; padding: 0 2rem 8rem; }
+
+  /* ── SECTIONS ── */
+  section { margin-bottom: 8rem; opacity: 0; transform: translateY(30px); transition: opacity 0.7s, transform 0.7s; }
+  section.visible { opacity: 1; transform: none; }
+
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--blue);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 700; line-height: 1.2;
+    margin-bottom: 1.5rem; color: var(--text);
+  }
+
+  h2 em { color: var(--gold); font-style: italic; }
+  h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; margin: 2rem 0 1rem; color: var(--text); }
+
+  p { margin-bottom: 1.4rem; color: var(--text); }
+
+  strong { color: var(--gold); font-weight: 500; }
+  em.blue { color: var(--blue); font-style: normal; }
+  em.green { color: var(--green); font-style: normal; }
+  em.red { color: var(--red); font-style: normal; }
+
+  /* ── CALLOUT ── */
+  .callout {
+    border-left: 3px solid var(--blue);
+    background: var(--bg3);
+    padding: 1.2rem 1.5rem; margin: 2rem 0;
+    border-radius: 0 8px 8px 0;
+    font-style: italic; color: var(--text-dim);
+  }
+
+  .callout.gold { border-color: var(--gold); }
+  .callout.green { border-color: var(--green); }
+
+  /* ── CODE ── */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem; background: var(--bg3);
+    color: var(--green); padding: 0.15em 0.4em;
+    border-radius: 4px; border: 1px solid var(--border);
+  }
+
+  pre {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem;
+    overflow-x: auto; margin: 1.5rem 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem; line-height: 1.7;
+  }
+
+  pre .c { color: var(--text-dimmer); }
+  pre .k { color: var(--purple); }
+  pre .n { color: var(--blue); }
+  pre .s { color: var(--gold); }
+  pre .num { color: var(--green); }
+
+  /* ── MATH ── */
+  .math {
+    text-align: center; padding: 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem; color: var(--gold);
+    background: var(--bg3); border-radius: 10px;
+    margin: 1.5rem 0; border: 1px solid var(--border);
+  }
+
+  /* ── CANVAS CONTAINERS ── */
+  .viz-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    margin: 2rem 0;
+  }
+
+  .viz-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--text-dimmer);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 1rem 1.2rem 0;
+  }
+
+  canvas.viz { display: block; width: 100%; }
+
+  /* ── INTERACTIVE CONTROLS ── */
+  .controls {
+    padding: 1rem 1.2rem;
+    display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+    border-top: 1px solid var(--border);
+  }
+
+  .ctrl-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none; height: 3px;
+    background: var(--border); border-radius: 2px;
+    outline: none; flex: 1; min-width: 100px;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--blue); cursor: pointer;
+    box-shadow: 0 0 6px var(--blue);
+  }
+
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; color: var(--bg);
+    background: var(--blue); border: none;
+    padding: 0.5rem 1rem; border-radius: 6px;
+    cursor: pointer; letter-spacing: 0.05em;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: var(--gold); }
+  .btn:active { transform: scale(0.97); }
+  .btn.gold { background: var(--gold); }
+  .btn.green { background: var(--green); }
+
+  .stat-row {
+    display: flex; gap: 2rem; padding: 0.8rem 1.2rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+    border-top: 1px solid var(--border); flex-wrap: wrap;
+  }
+
+  .stat { display: flex; flex-direction: column; gap: 0.2rem; }
+  .stat-val { color: var(--gold); font-size: 1rem; }
+  .stat-name { color: var(--text-dimmer); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* ── BUTTERFLY ── */
+  .butterfly-wrap {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem; margin: 2rem 0;
+  }
+
+  .butterfly-controls {
+    display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+  }
+
+  /* ── TABLE ── */
+  .comparison {
+    width: 100%; border-collapse: collapse;
+    margin: 2rem 0; font-size: 0.9rem;
+  }
+
+  .comparison th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-dimmer);
+    padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .comparison td {
+    padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  .comparison td:first-child { color: var(--text); font-weight: 500; }
+  .comparison tr:last-child td { border-bottom: none; }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex; flex-direction: column; gap: 0;
+    margin: 2rem 0;
+  }
+
+  .pipe-step {
+    display: flex; align-items: flex-start; gap: 1.2rem;
+    padding: 1.2rem; background: var(--bg2);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+
+  .pipe-step:first-child { border-radius: 12px 12px 0 0; }
+  .pipe-step:last-child { border-radius: 0 0 12px 12px; border-top: none; }
+  .pipe-step:not(:first-child):not(:last-child) { border-top: none; }
+
+  .pipe-icon {
+    font-size: 1.4rem; flex-shrink: 0;
+    width: 2.5rem; height: 2.5rem;
+    background: var(--bg3); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .pipe-content h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem; color: var(--blue);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+
+  .pipe-content p { font-size: 0.9rem; color: var(--text-dim); margin: 0; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 4rem 2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; color: var(--text-dimmer);
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  @keyframes glow { 0%,100%{box-shadow:0 0 5px var(--blue)} 50%{box-shadow:0 0 20px var(--blue)} }
+
+  /* ── DIVIDER ── */
+  .divider {
+    width: 60px; height: 2px; margin: 3rem auto;
+    background: linear-gradient(90deg, transparent, var(--blue), transparent);
+  }
+
+  /* ── HIGHLIGHT BOX ── */
+  .insight {
+    background: linear-gradient(135deg, rgba(79,156,249,0.08), rgba(245,200,66,0.05));
+    border: 1px solid rgba(79,156,249,0.2);
+    border-radius: 12px; padding: 1.5rem 1.8rem;
+    margin: 2rem 0;
+  }
+
+  .insight-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--blue);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  .insight p { margin: 0; color: var(--text); }
+
+  @media (max-width: 600px) {
+    body { font-size: 16px; }
+    main { padding: 0 1.2rem 6rem; }
+    h1 { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
+<header>
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-tag">A Visual Essay on Quantization</div>
+  <h1>Why <em>Rotating Vectors</em> Makes Compression Beautiful</h1>
+  <p class="hero-sub">From outliers to the Walsh-Hadamard Transform — a ground-up intuition for TurboQuant and PolarQuant</p>
+  <div class="scroll-hint">scroll to explore</div>
+  <div class="scroll-arrow"></div>
+</header>
+
+<!-- ═══════════════════════════════ MAIN ═══════════════════════════════ -->
+<main>
+
+<!-- ── §1 THE PROBLEM ── -->
+<section id="s1">
+  <div class="section-num">§ 01</div>
+  <h2>The Compression Problem</h2>
+
+  <p>Modern language models store enormous tables of numbers called <strong>KV-cache vectors</strong>. Each vector has 128, 256, or even 4096 dimensions. Storing them at full precision (32-bit floats) is expensive. So we <em class="blue">quantize</em> — we round each number to the nearest slot on a discrete scale.</p>
+
+  <p>The simplest approach: divide the range of values into equally-spaced levels. With 4 bits you get <code>2⁴ = 16</code> levels. With 2 bits, just <code>4</code> levels.</p>
+
+  <div class="callout">
+    Think of it like a ruler with only a few markings. The fewer markings, the less precisely you can measure — but the more space you save.
+  </div>
+
+  <p>The problem? Real KV-cache vectors are <em class="red">not well-behaved</em>. A handful of coordinates are enormous. Most are near zero. This is the outlier problem.</p>
+</section>
+
+<!-- ── §2 OUTLIERS ── -->
+<section id="s2">
+  <div class="section-num">§ 02</div>
+  <h2>The <em>Outlier</em> Problem — Interactive</h2>
+
+  <p>Below is a simulated KV-cache vector with 64 coordinates. Five channels (in <em class="red">red</em>) have values 20× larger than the rest. Use the slider to change the number of quantization bits and watch what happens.</p>
+
+  <div class="viz-wrap">
+    <div class="viz-label">Original Vector — Before Quantization</div>
+    <canvas id="c-original" class="viz" height="160"></canvas>
+    <div class="viz-label" style="margin-top:0.5rem">Quantized Vector — After Naive Quantization</div>
+    <canvas id="c-quantized" class="viz" height="160"></canvas>
+    <div class="controls">
+      <span class="ctrl-label">bits:</span>
+      <input type="range" id="bits-slider" min="1" max="4" value="2" step="1">
+      <span class="ctrl-label" id="bits-val" style="color:var(--gold)">2 bits = 4 levels</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><span class="stat-val" id="mse-val">—</span><span class="stat-name">MSE</span></div>
+      <div class="stat"><span class="stat-val" id="range-val">—</span><span class="stat-name">Range</span></div>
+      <div class="stat"><span class="stat-val" id="scale-val">—</span><span class="stat-name">Slot Width</span></div>
+      <div class="stat"><span class="stat-val" id="wasted-val">—</span><span class="stat-name">Wasted Slots</span></div>
+    </div>
+  </div>
+
+  <p>Notice how the slot width <code>scale = (max − min) / (n_levels − 1)</code> is enormous because of the outliers. All the normal coordinates get collapsed into just a couple of slots. <strong>The ruler is stretched by the tall students.</strong></p>
+
+  <div class="insight">
+    <div class="insight-title">⚡ Key Insight</div>
+    <p>Worst-case reconstruction error = <code>0.5 × scale = 0.5 × (max − min) / (n_levels − 1)</code>. Large range → large error. The outliers are not just annoying — they mathematically guarantee poor reconstruction for everyone else.</p>
+  </div>
+</section>
+
+<!-- ── §3 ROTATION ── -->
+<section id="s3">
+  <div class="section-num">§ 03</div>
+  <h2>The Fix: <em>Rotate First</em></h2>
+
+  <p>What if we applied a transformation that <strong>spreads the outlier energy</strong> evenly across all coordinates — before quantizing?</p>
+
+  <p>A <em class="blue">rotation matrix</em> R does exactly this. It has three magical properties:</p>
+
+  <table class="comparison">
+    <tr><th>Property</th><th>Math</th><th>What it means</th></tr>
+    <tr><td>Preserves length</td><td><code>‖Rx‖ = ‖x‖</code></td><td>No information destroyed</td></tr>
+    <tr><td>Preserves dot products</td><td><code>(Rx)·(Ry) = x·y</code></td><td>Attention scores unchanged</td></tr>
+    <tr><td>Fully reversible</td><td><code>x = Rᵀ(Rx)</code></td><td>Perfect reconstruction possible</td></tr>
+  </table>
+
+  <p>Click <strong>Rotate</strong> to see what happens to our outlier vector after a random rotation:</p>
+
+  <div class="viz-wrap">
+    <div class="viz-label">Coordinate Values — Before vs After Rotation</div>
+    <canvas id="c-rotate" class="viz" height="220"></canvas>
+    <div class="controls">
+      <button class="btn gold" id="btn-rotate">↺ Rotate</button>
+      <button class="btn" id="btn-reset-rot">Reset</button>
+      <span class="ctrl-label" id="rot-status" style="color:var(--text-dim)">Click Rotate to transform</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><span class="stat-val" id="rot-before-ratio">22.1×</span><span class="stat-name">Max/Mean Before</span></div>
+      <div class="stat"><span class="stat-val" id="rot-after-ratio">—</span><span class="stat-name">Max/Mean After</span></div>
+      <div class="stat"><span class="stat-val" id="rot-norm">Preserved</span><span class="stat-name">Norm</span></div>
+    </div>
+  </div>
+
+  <div class="callout gold">
+    The outlier energy didn't disappear — it was <em>redistributed</em>. Like pouring water from a tall thin glass into a wide flat bowl. The total amount of water (norm) is the same, but no single spot is overwhelmingly deep.
+  </div>
+
+  <p>After rotation, all coordinates have <strong>similar magnitudes</strong>. Now the quantization range is small, slot width is tiny, and every slot does useful work. Reconstruction error collapses.</p>
+</section>
+
+<!-- ── §4 DISTRIBUTION ── -->
+<section id="s4">
+  <div class="section-num">§ 04</div>
+  <h2>The <em>Exact Distribution</em> After Rotation</h2>
+
+  <p>Here's what makes this truly powerful. For a <em class="blue">unit-norm</em> vector rotated by a random rotation matrix, we don't just know the values spread out — we know <em>exactly</em> what distribution they follow.</p>
+
+  <div class="math">Each coordinate of Rx ≈ N(0, 1/d) for large d</div>
+
+  <p>A bell curve centered at zero, with spread <code>σ = 1/√d</code>. For <code>d = 128</code>, that's <code>σ ≈ 0.088</code>.</p>
+
+  <p>This is extraordinary. No matter what vector you start with, after rotation, every coordinate follows the <strong>same predictable bell curve</strong>. We can verify this experimentally:</p>
+
+  <div class="viz-wrap">
+    <div class="viz-label">Distribution of coordinates after rotation (10,000 random vectors)</div>
+    <canvas id="c-dist" class="viz" height="220"></canvas>
+    <div class="controls">
+      <button class="btn green" id="btn-dist-run">▶ Run Experiment</button>
+      <span class="ctrl-label" id="dist-status" style="color:var(--text-dim)">Press to simulate 10,000 rotations</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><span class="stat-val" id="dist-theory">0.0884</span><span class="stat-name">Theoretical σ</span></div>
+      <div class="stat"><span class="stat-val" id="dist-empirical">—</span><span class="stat-name">Empirical σ</span></div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-title">💡 Why This Matters for Quantization</div>
+    <p>Naive quantization places slots <em>uniformly</em> — equal gaps everywhere. But if we <em>know</em> the distribution is N(0, 1/d), we can place <strong>more slots near zero</strong> (where most data lives) and <strong>fewer at the edges</strong> (where almost nothing is). Same number of bits. Much better precision. This is PolarQuant.</p>
+  </div>
+</section>
+
+<!-- ── §5 WHT ── -->
+<section id="s5">
+  <div class="section-num">§ 05</div>
+  <h2>The Walsh-Hadamard Transform: <em>Fast Rotation</em></h2>
+
+  <p>Dense random rotation requires O(d²) operations — a full matrix-vector multiply. For <code>d = 128</code>:</p>
+
+  <div class="math">128 × 128 = 16,384 operations per vector</div>
+
+  <p>When you're processing millions of vectors in a language model, that's too slow. The <strong>Walsh-Hadamard Transform (WHT)</strong> achieves the same spreading effect using only additions and subtractions, in O(d log d):</p>
+
+  <div class="math">128 × log₂(128) = 128 × 7 = 896 operations — 18× fewer</div>
+
+  <h3>The Butterfly Pattern</h3>
+
+  <p>WHT works in <strong>stages</strong>. At each stage, pairs of elements are added and subtracted. The pattern looks like butterfly wings — hence the name.</p>
+
+  <p>Each butterfly operation takes two numbers <code>a</code> and <code>b</code> and produces:</p>
+
+  <pre><code>a ──┬──→  a + b
+    ✕
+b ──┴──→  a - b</code></pre>
+
+  <p>No multiplication. Just <code>+</code> and <code>−</code>. Step through the animation below to watch information propagate from one coordinate to all coordinates:</p>
+
+  <div class="butterfly-wrap">
+    <div class="viz-label" style="padding: 0 0 1rem">WHT Butterfly — 8 Elements, 3 Stages</div>
+    <canvas id="c-butterfly" width="720" height="320" style="display:block;width:100%;max-width:720px"></canvas>
+    <div class="butterfly-controls">
+      <button class="btn" id="btn-bfly-prev">← Prev Stage</button>
+      <button class="btn gold" id="btn-bfly-next">Next Stage →</button>
+      <button class="btn" id="btn-bfly-reset">Reset</button>
+      <span class="ctrl-label" id="bfly-stage-label" style="color:var(--gold)">Stage 0 of 3</span>
+    </div>
+    <div style="padding:0 0 0.5rem; font-family:'JetBrains Mono',monospace; font-size:0.8rem; color:var(--text-dim)" id="bfly-desc">
+      Initial: all information sits at coordinate 0.
+    </div>
+  </div>
+
+  <h3>The Hadamard Matrix</h3>
+
+  <p>If you write down the results of all possible butterfly patterns as a grid, you get the <strong>Hadamard matrix H</strong> — a matrix containing only +1 and −1. It's built recursively:</p>
+
+  <pre><code>H₁ = [1]
+
+H₂ = [ H₁   H₁ ] = [ +1  +1 ]
+     [ H₁  -H₁ ]   [ +1  -1 ]
+
+H₄ = [ H₂   H₂ ]  ...and so on
+     [ H₂  -H₂ ]</code></pre>
+
+  <p>Each size is two copies of the previous — one normal, one sign-flipped. This recursive doubling is why WHT achieves its O(d log d) efficiency.</p>
+
+  <div class="viz-wrap">
+    <div class="viz-label">Hadamard Matrix H₈ — only +1 and −1</div>
+    <canvas id="c-hadamard" class="viz" height="220"></canvas>
+  </div>
+</section>
+
+<!-- ── §6 RANDOM SIGNS ── -->
+<section id="s6">
+  <div class="section-num">§ 06</div>
+  <h2>The Missing Ingredient: <em>Random Signs</em></h2>
+
+  <p>WHT alone has a problem: the Hadamard matrix H is <strong>fixed</strong>. Every vector gets the exact same transformation. This breaks the randomness guarantee we need for N(0, 1/d).</p>
+
+  <div class="callout">
+    <strong>The Xerox Machine Analogy:</strong> Imagine a cheap photocopier that can only print 4 shades of grey. Ravi's answer sheet <code>[10, 2, 1]</code> and Priya's <code>[9, 3, 1]</code> both get photocopied to <code>[dark, light, light]</code>. The copies are identical. When the teacher tries to reconstruct the original marks — she can't. Two different inputs collapsed into one output. <strong>Information was permanently lost.</strong>
+  </div>
+
+  <p>Random signs prevent this collision. Before and after WHT, we multiply each coordinate by a random <code>+1</code> or <code>−1</code>:</p>
+
+  <pre><code><span class="c"># Step 1: random sign flip</span>
+x = x * signs1        <span class="c"># e.g. [+1,-1,+1,+1,-1,...]</span>
+
+<span class="c"># Step 2: WHT butterfly spread</span>
+y = WHT(x)
+
+<span class="c"># Step 3: random sign flip again</span>
+y = y * signs2</code></pre>
+
+  <p>Now two similar vectors, after being scrambled by different random signs, produce completely different outputs from WHT. No collision possible. The N(0, 1/d) guarantee holds.</p>
+
+  <div class="viz-wrap">
+    <div class="viz-label">Collision Demo — Same WHT vs Sign-Scrambled WHT</div>
+    <canvas id="c-signs" class="viz" height="220"></canvas>
+    <div class="controls">
+      <button class="btn" id="btn-signs-run">▶ Show Collision Problem</button>
+      <button class="btn green" id="btn-signs-fix">✓ Apply Random Signs</button>
+      <span class="ctrl-label" id="signs-status" style="color:var(--text-dim)">Two similar vectors, A and B</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── §7 FULL PIPELINE ── -->
+<section id="s7">
+  <div class="section-num">§ 06</div>
+  <h2>The Complete Pipeline</h2>
+
+  <p>Now we can assemble the full picture. This is how TurboQuant/PolarQuant processes every KV-cache vector:</p>
+
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-icon">📥</div>
+      <div class="pipe-content">
+        <h4>Input</h4>
+        <p>Raw KV-cache vector with outlier channels. Max/Mean ratio ≈ 22×. Naive quantization fails here.</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🎲</div>
+      <div class="pipe-content">
+        <h4>Step 1 — Random Sign Flip</h4>
+        <p>Multiply each coordinate by random ±1. Breaks predictability, ensures no two vectors collide.</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🦋</div>
+      <div class="pipe-content">
+        <h4>Step 2 — Walsh-Hadamard Transform</h4>
+        <p>Butterfly spread across log₂(d) stages. Information propagates from every coordinate to every other. Only additions and subtractions. O(d log d).</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🎲</div>
+      <div class="pipe-content">
+        <h4>Step 3 — Random Sign Flip Again</h4>
+        <p>Second randomization pass. Together with Step 1, this guarantees the N(0, 1/d) distribution.</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">📐</div>
+      <div class="pipe-content">
+        <h4>Step 4 — Optimal Quantization</h4>
+        <p>Since we know coordinates follow N(0, 1/d), we place more slots near zero, fewer at the edges. Maximum information per bit.</p>
+      </div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">📦</div>
+      <div class="pipe-content">
+        <h4>Output</h4>
+        <p>Compressed vector. To reconstruct: dequantize → inverse sign flip → inverse WHT → inverse sign flip.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3>Why This Works — The One-Line Proof</h3>
+
+  <div class="insight">
+    <div class="insight-title">🎯 The Core Chain</div>
+    <p><strong>Outliers stretch the range → large slot width → large reconstruction error.</strong> Rotation spreads outliers across all dimensions → range collapses → tiny slot width → tiny error. And since we know the post-rotation distribution is always N(0, 1/d), we can precompute <em>optimal</em> slot positions. WHT makes this fast enough for real-time inference.</p>
+  </div>
+
+  <table class="comparison">
+    <tr><th>Method</th><th>Cost</th><th>Handles Outliers</th><th>Optimal Slots</th></tr>
+    <tr><td>Naive Quantization</td><td>O(d)</td><td>✗</td><td>✗</td></tr>
+    <tr><td>Dense Rotation + Quant</td><td>O(d²)</td><td>✓</td><td>✓</td></tr>
+    <tr><td>WHT + PolarQuant</td><td>O(d log d)</td><td>✓</td><td>✓</td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  Built as a learning companion to TurboQuant / PolarQuant research.<br>
+  Animations are approximate visualizations — not exact simulation outputs.
+</footer>
+
+<!-- ═══════════════════════════════ JS ═══════════════════════════════ -->
+<script>
+/* ── UTILS ── */
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+
+function seededRand(seed) {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+}
+
+function gaussianRand(rand) {
+  let u = 0, v = 0;
+  while (u === 0) u = rand();
+  while (v === 0) v = rand();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+
+/* ── HERO CANVAS ── */
+(function() {
+  const cv = $('hero-canvas');
+  const ctx = cv.getContext('2d');
+  let W, H, pts = [];
+
+  function resize() {
+    W = cv.width = cv.offsetWidth;
+    H = cv.height = cv.offsetHeight;
+  }
+
+  function initPts() {
+    pts = [];
+    for (let i = 0; i < 80; i++) {
+      pts.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, r: Math.random() * 2 + 0.5 });
+    }
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    pts.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, TAU);
+      ctx.fillStyle = '#4f9cf9';
+      ctx.fill();
+    });
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 120) {
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.strokeStyle = `rgba(79,156,249,${(1 - d / 120) * 0.4})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', () => { resize(); initPts(); });
+  resize(); initPts(); frame();
+})();
+
+/* ── PROGRESS BAR ── */
+window.addEventListener('scroll', () => {
+  const prog = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+  $('progress').style.width = prog + '%';
+});
+
+/* ── INTERSECTION OBSERVER ── */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('section').forEach(s => observer.observe(s));
+
+/* ════════════════════════════════════════════════
+   §2  OUTLIER + QUANTIZATION DEMO
+════════════════════════════════════════════════ */
+(function() {
+  const D = 64;
+  const rand = seededRand(42);
+  const outlierIdx = [3, 12, 27, 44, 58];
+
+  // Build original vector
+  const x = Array.from({ length: D }, () => gaussianRand(rand) * 0.15);
+  outlierIdx.forEach(i => x[i] = gaussianRand(rand) * 2.5);
+
+  const cOrig = $('c-original');
+  const cQuant = $('c-quantized');
+
+  function getCtx(cv) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.offsetWidth * dpr, H = 160 * dpr;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, W: cv.offsetWidth, H: 160 };
+  }
+
+  function drawBars(cv, vals, opts = {}) {
+    const { ctx, W, H } = getCtx(cv);
+    ctx.clearRect(0, 0, W, H);
+    const allVals = [...x, ...vals];
+    const globalMin = Math.min(...allVals);
+    const globalMax = Math.max(...allVals);
+    const pad = 20;
+    const barW = (W - pad * 2) / D;
+    const midY = H / 2;
+    const scale = (H / 2 - 10) / Math.max(Math.abs(globalMin), Math.abs(globalMax));
+
+    // Zero line
+    ctx.beginPath(); ctx.moveTo(pad, midY); ctx.lineTo(W - pad, midY);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
+
+    vals.forEach((v, i) => {
+      const bh = Math.abs(v) * scale;
+      const bx = pad + i * barW;
+      const by = v >= 0 ? midY - bh : midY;
+      const isOutlier = outlierIdx.includes(i);
+      ctx.fillStyle = isOutlier ? '#f06060cc' : (opts.color || '#4f9cf9aa');
+      ctx.fillRect(bx + 1, by, barW - 2, bh);
+    });
+  }
+
+  function naiveQuantize(vec, nLevels) {
+    const mn = Math.min(...vec), mx = Math.max(...vec);
+    const sc = (mx - mn) / (nLevels - 1);
+    if (sc === 0) return { hat: [...vec], mse: 0, sc, mn, mx };
+    const hat = vec.map(v => Math.round((v - mn) / sc) * sc + mn);
+    const mse = hat.reduce((acc, v, i) => acc + (vec[i] - v) ** 2, 0) / vec.length;
+    return { hat, mse, sc, mn, mx };
+  }
+
+  function update() {
+    const bits = parseInt($('bits-slider').value);
+    const nLevels = 1 << bits;
+    $('bits-val').textContent = `${bits} bit${bits > 1 ? 's' : ''} = ${nLevels} levels`;
+
+    const { hat, mse, sc, mn, mx } = naiveQuantize(x, nLevels);
+    drawBars(cOrig, x);
+    drawBars(cQuant, hat, { color: '#f5c842aa' });
+
+    $('mse-val').textContent = mse.toFixed(4);
+    $('range-val').textContent = (mx - mn).toFixed(2);
+    $('scale-val').textContent = sc.toFixed(3);
+
+    // Count wasted slots — those where almost no data lands
+    const binCounts = new Array(nLevels).fill(0);
+    x.forEach(v => {
+      const idx = Math.round((v - mn) / sc);
+      if (idx >= 0 && idx < nLevels) binCounts[idx]++;
+    });
+    const wasted = binCounts.filter(c => c === 0).length;
+    $('wasted-val').textContent = wasted + ' / ' + nLevels;
+  }
+
+  $('bits-slider').addEventListener('input', update);
+  update();
+  window.addEventListener('resize', update);
+})();
+
+/* ════════════════════════════════════════════════
+   §3  ROTATION DEMO
+════════════════════════════════════════════════ */
+(function() {
+  const D = 64;
+  const rand = seededRand(99);
+  const outlierIdx = [5, 18, 35, 50, 61];
+
+  const x = Array.from({ length: D }, () => gaussianRand(rand) * 0.12);
+  outlierIdx.forEach(i => x[i] = gaussianRand(rand) * 2.2);
+
+  // Simple random rotation via Gram-Schmidt on random matrix
+  function makeRotation(d, rng) {
+    let mat = [];
+    for (let i = 0; i < d; i++) {
+      let row = Array.from({ length: d }, () => gaussianRand(rng));
+      // Gram-Schmidt orthogonalize
+      for (let j = 0; j < i; j++) {
+        const dot = row.reduce((s, v, k) => s + v * mat[j][k], 0);
+        row = row.map((v, k) => v - dot * mat[j][k]);
+      }
+      const norm = Math.sqrt(row.reduce((s, v) => s + v * v, 0));
+      mat.push(row.map(v => v / norm));
+    }
+    return mat;
+  }
+
+  function matVec(R, v) {
+    return R.map(row => row.reduce((s, r, k) => s + r * v[k], 0));
+  }
+
+  const R = makeRotation(D, seededRand(7));
+  let rotated = false;
+  let animProgress = 0;
+  let animId = null;
+  let y = null;
+
+  const cv = $('c-rotate');
+  function draw(t) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.offsetWidth * dpr, H = 220 * dpr;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const Wl = cv.offsetWidth, Hl = 220;
+    ctx.clearRect(0, 0, Wl, Hl);
+
+    const displayed = y ? x.map((v, i) => lerp(v, y[i], t)) : x;
+    const allV = [...x, ...(y || x)];
+    const globalMax = Math.max(...allV.map(Math.abs));
+    const pad = 20;
+    const barW = (Wl - pad * 2) / D;
+    const midY = Hl / 2;
+    const sc = (Hl / 2 - 15) / globalMax;
+
+    ctx.beginPath(); ctx.moveTo(pad, midY); ctx.lineTo(Wl - pad, midY);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
+
+    displayed.forEach((v, i) => {
+      const bh = Math.abs(v) * sc;
+      const bx = pad + i * barW;
+      const by = v >= 0 ? midY - bh : midY;
+      const isOutlier = outlierIdx.includes(i);
+      const mixR = t;
+      const r = isOutlier ? lerp(240, 80, mixR) : lerp(79, 80, mixR);
+      const g = isOutlier ? lerp(96, 217, mixR) : lerp(156, 217, mixR);
+      const b = isOutlier ? lerp(249, 160, mixR) : lerp(249, 160, mixR);
+      ctx.fillStyle = `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},0.8)`;
+      ctx.fillRect(bx + 1, by, barW - 2, bh);
+    });
+
+    // Labels
+    ctx.font = `${10 * dpr / dpr}px JetBrains Mono`;
+    ctx.fillStyle = t < 0.5 ? '#4f9cf9' : '#50d9a0';
+    ctx.textAlign = 'left';
+    ctx.fillText(t < 0.5 ? 'ORIGINAL' : 'ROTATED', pad, 14);
+  }
+
+  function animate() {
+    animProgress = Math.min(animProgress + 0.02, 1);
+    draw(animProgress);
+    if (animProgress < 1) animId = requestAnimationFrame(animate);
+    else {
+      const absY = y.map(Math.abs);
+      const maxY = Math.max(...absY);
+      const meanY = absY.reduce((s, v) => s + v, 0) / absY.length;
+      $('rot-after-ratio').textContent = (maxY / meanY).toFixed(1) + '×';
+      $('rot-status').textContent = 'Rotation complete — outliers spread!';
+      $('rot-status').style.color = '#50d9a0';
+    }
+  }
+
+  $('btn-rotate').addEventListener('click', () => {
+    if (animId) cancelAnimationFrame(animId);
+    y = matVec(R, x);
+    const normX = Math.sqrt(x.reduce((s, v) => s + v * v, 0));
+    const normY = Math.sqrt(y.reduce((s, v) => s + v * v, 0));
+    $('rot-norm').textContent = Math.abs(normX - normY) < 0.001 ? '✓ Preserved' : 'Changed!';
+    animProgress = 0; animate();
+  });
+
+  $('btn-reset-rot').addEventListener('click', () => {
+    if (animId) cancelAnimationFrame(animId);
+    y = null; animProgress = 0;
+    draw(0);
+    $('rot-after-ratio').textContent = '—';
+    $('rot-status').textContent = 'Click Rotate to transform';
+    $('rot-status').style.color = 'var(--text-dim)';
+  });
+
+  draw(0);
+  window.addEventListener('resize', () => draw(animProgress));
+})();
+
+/* ════════════════════════════════════════════════
+   §4  DISTRIBUTION DEMO
+════════════════════════════════════════════════ */
+(function() {
+  const cv = $('c-dist');
+  const D = 128;
+
+  function seededGauss(seed) {
+    const r = seededRand(seed);
+    return () => gaussianRand(r);
+  }
+
+  function drawDist(coords) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.offsetWidth * dpr, H = 220 * dpr;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const Wl = cv.offsetWidth, Hl = 220;
+
+    const sigma = 1 / Math.sqrt(D);
+    const xRange = 4 * sigma;
+    const bins = 50;
+    const counts = new Array(bins).fill(0);
+
+    if (coords && coords.length > 0) {
+      coords.forEach(v => {
+        const bi = Math.floor((v + xRange) / (2 * xRange) * bins);
+        if (bi >= 0 && bi < bins) counts[bi]++;
+      });
+    }
+
+    const maxCount = Math.max(...counts, 1);
+    const pad = { l: 40, r: 20, t: 20, b: 30 };
+    const cw = Wl - pad.l - pad.r;
+    const ch = Hl - pad.t - pad.b;
+
+    ctx.clearRect(0, 0, Wl, Hl);
+
+    // Axes
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + ch); ctx.lineTo(pad.l + cw, pad.t + ch); ctx.stroke();
+
+    // Bars
+    if (coords && coords.length > 0) {
+      counts.forEach((c, i) => {
+        const bh = (c / maxCount) * ch;
+        ctx.fillStyle = 'rgba(80,217,160,0.6)';
+        ctx.fillRect(pad.l + i * cw / bins, pad.t + ch - bh, cw / bins - 1, bh);
+      });
+    }
+
+    // Theoretical curve N(0, 1/D)
+    const totalCoords = coords ? coords.length : 0;
+    const binWidth = 2 * xRange / bins;
+    ctx.beginPath();
+    for (let px = 0; px <= cw; px++) {
+      const xv = -xRange + (px / cw) * 2 * xRange;
+      const density = Math.exp(-xv * xv / (2 * sigma * sigma)) / (sigma * Math.sqrt(TAU));
+      const expectedCount = density * binWidth * totalCoords;
+      const normH = (expectedCount / maxCount) * ch;
+      const py = pad.t + ch - normH;
+      px === 0 ? ctx.moveTo(pad.l + px, py) : ctx.lineTo(pad.l + px, py);
+    }
+    ctx.strokeStyle = '#f06060';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Legend
+    ctx.font = '11px JetBrains Mono';
+    ctx.fillStyle = '#50d9a0';
+    ctx.fillText('■ Empirical', pad.l + 10, pad.t + 16);
+    ctx.fillStyle = '#f06060';
+    ctx.fillText('— N(0,1/d)', pad.l + 110, pad.t + 16);
+  }
+
+  drawDist(null);
+
+  $('btn-dist-run').addEventListener('click', () => {
+    $('dist-status').textContent = 'Simulating...';
+    $('dist-status').style.color = 'var(--gold)';
+
+    setTimeout(() => {
+      const rg = seededGauss(42);
+      const D = 128;
+      const coords = [];
+
+      // Simulate rotations by just generating gaussian coords
+      for (let i = 0; i < 10000; i++) {
+        let v = Array.from({ length: D }, rg);
+        const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+        v = v.map(x => x / norm);
+        coords.push(v[0]);
+      }
+
+      const std = Math.sqrt(coords.reduce((s, v) => s + v * v, 0) / coords.length);
+      $('dist-empirical').textContent = std.toFixed(4);
+      drawDist(coords);
+
+      $('dist-status').textContent = 'Theory confirmed! ✓';
+      $('dist-status').style.color = 'var(--green)';
+    }, 50);
+  });
+
+  window.addEventListener('resize', () => drawDist(null));
+})();
+
+/* ════════════════════════════════════════════════
+   §5a  BUTTERFLY ANIMATION
+════════════════════════════════════════════════ */
+(function() {
+  const cv = $('c-butterfly');
+  const N = 8;
+  const STAGES = Math.log2(N);
+  let currentStage = 0;
+
+  // Initial: all info at coord 0
+  let values = [1.0, 0, 0, 0, 0, 0, 0, 0];
+  let allStageValues = [values.slice()];
+
+  // Precompute all stages
+  function computeWHT(v) {
+    let cur = v.slice();
+    const stages = [cur.slice()];
+    for (let s = 0; s < STAGES; s++) {
+      const next = cur.slice();
+      const half = 1 << s;
+      for (let i = 0; i < N; i += half * 2) {
+        for (let j = 0; j < half; j++) {
+          const a = cur[i + j], b = cur[i + j + half];
+          next[i + j] = a + b;
+          next[i + j + half] = a - b;
+        }
+      }
+      stages.push(next.slice());
+      cur = next;
+    }
+    // Normalize last stage
+    const norm = Math.sqrt(N);
+    stages[STAGES] = stages[STAGES].map(v => v / norm);
+    return stages;
+  }
+
+  allStageValues = computeWHT(values);
+
+  const descriptions = [
+    'Stage 0 of 3 — Initial state: all energy sits at coordinate 0.',
+    'Stage 1 of 3 — Butterfly pairs neighbours 1 apart. Energy doubles to 2 positions.',
+    'Stage 2 of 3 — Butterfly pairs distance-2 neighbours. Energy spreads to 4 positions.',
+    'Stage 3 of 3 — Final stage. Energy now equally spread across all 8 coordinates! ✓'
+  ];
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.offsetWidth || 720;
+    cv.width = W * dpr; cv.height = 320 * dpr;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, W, 320);
+
+    const vals = allStageValues[currentStage];
+    const maxVal = Math.max(...vals.map(Math.abs), 0.5);
+
+    const padL = 60, padR = 20, padT = 40, padB = 60;
+    const plotW = W - padL - padR;
+    const plotH = 320 - padT - padB;
+    const nodeSpacing = plotW / (N - 1);
+    const midY = padT + plotH / 2;
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = padT + (i / 4) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+    }
+
+    // Zero line
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath(); ctx.moveTo(padL, midY); ctx.lineTo(padL + plotW, midY); ctx.stroke();
+
+    // Bars
+    const barHalfW = nodeSpacing * 0.3;
+    vals.forEach((v, i) => {
+      const cx = padL + i * nodeSpacing;
+      const bh = (Math.abs(v) / maxVal) * (plotH / 2 - 10);
+      const by = v >= 0 ? midY - bh : midY;
+      const alpha = Math.abs(v) / maxVal;
+      ctx.fillStyle = `rgba(245,200,66,${0.3 + alpha * 0.7})`;
+      ctx.fillRect(cx - barHalfW, by, barHalfW * 2, bh);
+    });
+
+    // Nodes
+    vals.forEach((v, i) => {
+      const cx = padL + i * nodeSpacing;
+      const r = 14;
+      ctx.beginPath(); ctx.arc(cx, midY, r, 0, TAU);
+      ctx.fillStyle = '#12151c';
+      ctx.fill();
+      ctx.strokeStyle = '#4f9cf9';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#e8eaf0';
+      ctx.font = `bold 10px JetBrains Mono`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(v.toFixed(1), cx, midY);
+
+      // Index label
+      ctx.fillStyle = '#4a5568';
+      ctx.font = '10px JetBrains Mono';
+      ctx.fillText(`x${i}`, cx, padT + plotH + 20);
+    });
+
+    // Butterfly connections for current stage
+    if (currentStage > 0) {
+      const s = currentStage - 1;
+      const half = 1 << s;
+      ctx.strokeStyle = 'rgba(80,217,160,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      for (let i = 0; i < N; i += half * 2) {
+        for (let j = 0; j < half; j++) {
+          const ax = padL + (i + j) * nodeSpacing;
+          const bx = padL + (i + j + half) * nodeSpacing;
+          ctx.beginPath();
+          ctx.moveTo(ax, midY - 14);
+          ctx.bezierCurveTo(ax, midY - 50, bx, midY - 50, bx, midY - 14);
+          ctx.stroke();
+        }
+      }
+      ctx.setLineDash([]);
+    }
+
+    // Stage label
+    ctx.fillStyle = '#4f9cf9';
+    ctx.font = 'bold 12px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Stage ${currentStage} / ${STAGES}`, padL, padT - 15);
+  }
+
+  $('btn-bfly-next').addEventListener('click', () => {
+    if (currentStage < STAGES) currentStage++;
+    draw();
+    $('bfly-stage-label').textContent = `Stage ${currentStage} of ${STAGES}`;
+    $('bfly-desc').textContent = descriptions[currentStage];
+  });
+
+  $('btn-bfly-prev').addEventListener('click', () => {
+    if (currentStage > 0) currentStage--;
+    draw();
+    $('bfly-stage-label').textContent = `Stage ${currentStage} of ${STAGES}`;
+    $('bfly-desc').textContent = descriptions[currentStage];
+  });
+
+  $('btn-bfly-reset').addEventListener('click', () => {
+    currentStage = 0; draw();
+    $('bfly-stage-label').textContent = `Stage 0 of ${STAGES}`;
+    $('bfly-desc').textContent = descriptions[0];
+  });
+
+  draw();
+  window.addEventListener('resize', draw);
+})();
+
+/* ════════════════════════════════════════════════
+   §5b  HADAMARD MATRIX
+════════════════════════════════════════════════ */
+(function() {
+  const cv = $('c-hadamard');
+  const N = 8;
+
+  function hadamard(n) {
+    if (n === 1) return [[1]];
+    const H = hadamard(n / 2);
+    const result = [];
+    for (let i = 0; i < n / 2; i++) {
+      result.push([...H[i], ...H[i]]);
+    }
+    for (let i = 0; i < n / 2; i++) {
+      result.push([...H[i], ...H[i].map(v => -v)]);
+    }
+    return result;
+  }
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.offsetWidth * dpr, H = 220 * dpr;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const Wl = cv.offsetWidth, Hl = 220;
+    ctx.clearRect(0, 0, Wl, Hl);
+
+    const mat = hadamard(N);
+    const pad = 20;
+    const cellSize = Math.min((Wl - pad * 2) / N, (Hl - pad * 2) / N);
+    const startX = (Wl - cellSize * N) / 2;
+    const startY = (Hl - cellSize * N) / 2;
+
+    mat.forEach((row, i) => {
+      row.forEach((v, j) => {
+        const x = startX + j * cellSize;
+        const y = startY + i * cellSize;
+        ctx.fillStyle = v === 1 ? 'rgba(79,156,249,0.7)' : 'rgba(240,96,96,0.7)';
+        ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+        ctx.fillStyle = '#e8eaf0';
+        ctx.font = `bold ${Math.floor(cellSize * 0.4)}px JetBrains Mono`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(v === 1 ? '+1' : '−1', x + cellSize / 2, y + cellSize / 2);
+      });
+    });
+
+    // Row/col labels
+    ctx.fillStyle = '#4a5568';
+    ctx.font = `${Math.floor(cellSize * 0.3)}px JetBrains Mono`;
+    for (let i = 0; i < N; i++) {
+      ctx.fillText(`r${i}`, startX - 20, startY + i * cellSize + cellSize / 2);
+    }
+  }
+
+  draw();
+  window.addEventListener('resize', draw);
+})();
+
+/* ════════════════════════════════════════════════
+   §6  RANDOM SIGNS DEMO
+════════════════════════════════════════════════ */
+(function() {
+  const cv = $('c-signs');
+  const N = 16;
+
+  function simpleWHT(v) {
+    let cur = v.slice();
+    const stages = Math.log2(N);
+    for (let s = 0; s < stages; s++) {
+      const next = cur.slice();
+      const half = 1 << s;
+      for (let i = 0; i < N; i += half * 2) {
+        for (let j = 0; j < half; j++) {
+          const a = cur[i + j], b = cur[i + j + half];
+          next[i + j] = a + b;
+          next[i + j + half] = a - b;
+        }
+      }
+      cur = next;
+    }
+    return cur.map(v => v / Math.sqrt(N));
+  }
+
+  const rand = seededRand(55);
+  // Two similar vectors
+  const xA = Array.from({ length: N }, () => gaussianRand(rand) * 0.5);
+  const xB = xA.map(v => v + gaussianRand(rand) * 0.05); // very similar to A
+
+  let mode = 'none'; // 'none' | 'collision' | 'fixed'
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.offsetWidth * dpr, H = 220 * dpr;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const Wl = cv.offsetWidth, Hl = 220;
+    ctx.clearRect(0, 0, Wl, Hl);
+
+    let yA, yB;
+    let colorA = '#4f9cf9', colorB = '#f5c842';
+
+    if (mode === 'none') {
+      yA = xA; yB = xB;
+    } else if (mode === 'collision') {
+      yA = simpleWHT(xA);
+      yB = simpleWHT(xB);
+      // Quantize to 4 levels
+      const mn = Math.min(...yA, ...yB), mx = Math.max(...yA, ...yB);
+      const sc = (mx - mn) / 3;
+      yA = yA.map(v => Math.round((v - mn) / sc) * sc + mn);
+      yB = yB.map(v => Math.round((v - mn) / sc) * sc + mn);
+    } else {
+      // With random signs - different signs for A and B
+      const sigA = Array.from({ length: N }, () => (seededRand(11)() > 0.5 ? 1 : -1));
+      const sigB = Array.from({ length: N }, () => (seededRand(22)() > 0.5 ? 1 : -1));
+      yA = simpleWHT(xA.map((v, i) => v * sigA[i])).map((v, i) => v * sigA[i % N]);
+      yB = simpleWHT(xB.map((v, i) => v * sigB[i])).map((v, i) => v * sigB[i % N]);
+      const mn = Math.min(...yA, ...yB), mx = Math.max(...yA, ...yB);
+      const sc = (mx - mn) / 3;
+      yA = yA.map(v => Math.round((v - mn) / sc) * sc + mn);
+      yB = yB.map(v => Math.round((v - mn) / sc) * sc + mn);
+    }
+
+    const allV = [...yA, ...yB];
+    const globalMax = Math.max(...allV.map(Math.abs), 0.1);
+    const pad = 20;
+    const barW = (Wl - pad * 2) / (N * 2 + 2);
+    const midY = Hl / 2;
+    const sc = (Hl / 2 - 20) / globalMax;
+
+    ctx.beginPath(); ctx.moveTo(pad, midY); ctx.lineTo(Wl - pad, midY);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+
+    yA.forEach((v, i) => {
+      const bh = Math.abs(v) * sc;
+      const bx = pad + i * barW * 2;
+      ctx.fillStyle = colorA + 'cc';
+      ctx.fillRect(bx, v >= 0 ? midY - bh : midY, barW - 1, bh);
+    });
+
+    yB.forEach((v, i) => {
+      const bh = Math.abs(v) * sc;
+      const bx = pad + i * barW * 2 + barW;
+      ctx.fillStyle = colorB + 'cc';
+      ctx.fillRect(bx, v >= 0 ? midY - bh : midY, barW - 1, bh);
+    });
+
+    // Similarity measure
+    const diff = yA.reduce((s, v, i) => s + (v - yB[i]) ** 2, 0);
+    const similarity = Math.max(0, 1 - diff / yA.reduce((s, v) => s + v * v, 0));
+
+    ctx.font = '11px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = colorA; ctx.fillText('■ Vector A', pad, 18);
+    ctx.fillStyle = colorB; ctx.fillText('■ Vector B', pad + 90, 18);
+    ctx.fillStyle = similarity > 0.8 ? '#f06060' : '#50d9a0';
+    ctx.textAlign = 'right';
+    ctx.fillText(`Similarity: ${(similarity * 100).toFixed(0)}%`, Wl - pad, 18);
+  }
+
+  $('btn-signs-run').addEventListener('click', () => {
+    mode = 'collision';
+    draw();
+    $('signs-status').textContent = '⚠ WHT alone: A and B collapse to near-identical output!';
+    $('signs-status').style.color = 'var(--red)';
+  });
+
+  $('btn-signs-fix').addEventListener('click', () => {
+    mode = 'fixed';
+    draw();
+    $('signs-status').textContent = '✓ Random signs: A and B are now clearly different!';
+    $('signs-status').style.color = 'var(--green)';
+  });
+
+  draw();
+  window.addEventListener('resize', draw);
+})();
+</script>
+</body>
+</html>

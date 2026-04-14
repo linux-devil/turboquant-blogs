@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Art of Selective Precision — Modules 5 & 6</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&family+IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #f7f4ef;
+  --bg2:    #eee9e0;
+  --bg3:    #e4ddd2;
+  --ink:    #1a1612;
+  --ink2:   #3d3630;
+  --dim:    #8a7f74;
+  --dimmer: #c4bdb4;
+  --teal:   #0e7c6e;
+  --teal2:  #1aab98;
+  --red:    #c4372a;
+  --amber:  #b8720a;
+  --blue:   #1e5fa8;
+  --green:  #1a7a42;
+  --border: #d4cdc4;
+  --shadow: rgba(26,22,18,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  line-height: 1.85;
+  overflow-x: hidden;
+}
+
+/* ── PROGRESS ── */
+#prog {
+  position: fixed; top: 0; left: 0; height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--teal2));
+  z-index: 999; width: 0;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--ink);
+  color: var(--bg);
+  padding: 5rem 2rem 4rem;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+
+header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(14,124,110,0.25) 0%, transparent 70%);
+}
+
+.eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem; letter-spacing: 0.25em;
+  color: var(--teal2); text-transform: uppercase;
+  margin-bottom: 1.2rem; position: relative;
+  opacity: 0; animation: rise 0.7s 0.3s forwards;
+}
+
+h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(2rem, 6vw, 4rem);
+  font-weight: 400; line-height: 1.1;
+  max-width: 820px; margin: 0 auto 1rem;
+  position: relative;
+  opacity: 0; animation: rise 0.7s 0.5s forwards;
+}
+
+h1 em { color: var(--teal2); font-style: italic; }
+
+.hero-deck {
+  font-size: 1rem; color: rgba(247,244,239,0.6);
+  max-width: 560px; margin: 0 auto;
+  position: relative;
+  opacity: 0; animation: rise 0.7s 0.7s forwards;
+}
+
+/* ── CHAPTER TABS ── */
+.chapter-nav {
+  display: flex; gap: 0;
+  background: var(--bg2);
+  border-bottom: 2px solid var(--border);
+  position: sticky; top: 0; z-index: 50;
+  overflow-x: auto; scrollbar-width: none;
+}
+.chapter-nav::-webkit-scrollbar { display: none; }
+
+.ch-tab {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--dim);
+  padding: 0.85rem 1.4rem; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px; white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s;
+  background: none; border-top: none; border-left: none; border-right: none;
+}
+.ch-tab:hover { color: var(--ink); }
+.ch-tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+
+/* ── MAIN ── */
+main { max-width: 820px; margin: 0 auto; padding: 0 2rem 8rem; }
+
+/* ── SECTIONS ── */
+section {
+  margin-bottom: 8rem;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.6s, transform 0.6s;
+}
+section.vis { opacity: 1; transform: none; }
+
+.sec-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem; letter-spacing: 0.2em;
+  color: var(--teal); text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  font-weight: 400; line-height: 1.15;
+  margin-bottom: 1.2rem; color: var(--ink);
+}
+h2 em { color: var(--teal); font-style: italic; }
+h2 .r { color: var(--red); }
+
+h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.25rem; margin: 2.5rem 0 0.8rem;
+  color: var(--ink2);
+}
+
+p { margin-bottom: 1.2rem; color: var(--ink2); }
+strong { color: var(--ink); font-weight: 500; }
+em.g { color: var(--green); font-style: normal; font-weight: 500; }
+em.r { color: var(--red); font-style: normal; font-weight: 500; }
+em.t { color: var(--teal); font-style: normal; font-weight: 500; }
+em.a { color: var(--amber); font-style: normal; font-weight: 500; }
+
+code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem; background: var(--bg3);
+  color: var(--teal); padding: 0.1em 0.4em;
+  border-radius: 3px; border: 1px solid var(--border);
+}
+
+pre {
+  background: var(--ink); color: #c8e6c9;
+  border-radius: 10px; padding: 1.4rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem; line-height: 1.75;
+  overflow-x: auto; margin: 1.5rem 0;
+}
+pre .c { color: #546e7a; }
+pre .g { color: #a5d6a7; }
+pre .r { color: #ef9a9a; }
+pre .a { color: #ffe082; }
+pre .t { color: #80cbc4; }
+
+.callout {
+  border-left: 3px solid var(--teal);
+  background: rgba(14,124,110,0.05);
+  padding: 1rem 1.4rem; margin: 1.8rem 0;
+  border-radius: 0 8px 8px 0; color: var(--ink2);
+  font-style: italic;
+}
+.callout.red { border-color: var(--red); background: rgba(196,55,42,0.05); }
+.callout.amber { border-color: var(--amber); background: rgba(184,114,10,0.05); }
+
+.math {
+  text-align: center; padding: 1.1rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.95rem; color: var(--teal);
+  background: var(--bg2); border-radius: 8px;
+  margin: 1.5rem 0; border: 1px solid var(--border);
+}
+
+/* ── VIZ ── */
+.viz {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden; margin: 2rem 0;
+  box-shadow: 0 2px 12px var(--shadow);
+}
+.viz-lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem; letter-spacing: 0.15em;
+  color: var(--dim); text-transform: uppercase;
+  padding: 0.8rem 1.2rem 0;
+}
+canvas.vc { display: block; width: 100%; }
+.viz-ctrls {
+  padding: 0.8rem 1.2rem;
+  display: flex; gap: 0.7rem; flex-wrap: wrap; align-items: center;
+  border-top: 1px solid var(--border);
+}
+.viz-stats {
+  display: flex; gap: 2rem; padding: 0.7rem 1.2rem;
+  border-top: 1px solid var(--border); flex-wrap: wrap;
+}
+.vst { display: flex; flex-direction: column; gap: 0.1rem; }
+.vst-v { font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; color: var(--teal); }
+.vst-k { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; letter-spacing: 0.1em; color: var(--dimmer); text-transform: uppercase; }
+
+.btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem; letter-spacing: 0.06em;
+  color: #fff; background: var(--teal);
+  border: none; border-radius: 5px;
+  padding: 0.4rem 0.9rem; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  text-transform: uppercase; white-space: nowrap;
+}
+.btn:hover { background: var(--teal2); }
+.btn:active { transform: scale(0.97); }
+.btn.red { background: var(--red); }
+.btn.red:hover { background: #e04a3d; }
+.btn.amber { background: var(--amber); }
+.btn.green { background: var(--green); }
+.btn.blue { background: var(--blue); }
+.btn.ghost {
+  background: none; color: var(--teal);
+  border: 1px solid var(--teal);
+}
+.btn.ghost:hover { background: rgba(14,124,110,0.08); }
+
+input[type=range] {
+  -webkit-appearance: none; height: 3px;
+  background: var(--border); border-radius: 2px; flex: 1;
+  min-width: 80px; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--teal);
+  box-shadow: 0 0 4px rgba(14,124,110,0.4);
+}
+.ctrl-lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem; color: var(--dim); white-space: nowrap;
+}
+.badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem; color: var(--teal);
+  background: rgba(14,124,110,0.08);
+  border: 1px solid rgba(14,124,110,0.2);
+  padding: 0.15rem 0.5rem; border-radius: 4px;
+  min-width: 56px; text-align: center;
+}
+
+/* ── TABLE ── */
+table {
+  width: 100%; border-collapse: collapse;
+  margin: 2rem 0; font-size: 0.88rem;
+}
+th {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--dim);
+  padding: 0.6rem 1rem; border-bottom: 2px solid var(--border);
+  text-align: left;
+}
+td { padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); color: var(--ink2); }
+td:first-child { color: var(--ink); font-weight: 500; }
+tr:last-child td { border-bottom: none; }
+.good { color: var(--green) !important; }
+.bad  { color: var(--red) !important; }
+.best { color: var(--teal) !important; font-weight: 600; }
+.warn { color: var(--amber) !important; }
+
+/* ── INSIGHT ── */
+.insight {
+  background: linear-gradient(135deg, rgba(14,124,110,0.06), rgba(14,124,110,0.02));
+  border: 1px solid rgba(14,124,110,0.2);
+  border-radius: 12px; padding: 1.3rem 1.6rem; margin: 2rem 0;
+}
+.insight-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem; letter-spacing: 0.15em;
+  color: var(--teal); text-transform: uppercase; margin-bottom: 0.4rem;
+}
+.insight p { margin: 0; }
+
+/* ── DIVIDER ── */
+.divider {
+  display: flex; align-items: center; gap: 1rem;
+  margin: 5rem 0;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.divider span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem; letter-spacing: 0.2em;
+  color: var(--dimmer); text-transform: uppercase; white-space: nowrap;
+}
+
+/* ── STACK VIZ ── */
+.stack {
+  display: flex; flex-direction: column; gap: 0;
+  margin: 2rem 0; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.stack-layer {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2); transition: background 0.2s;
+  cursor: default;
+}
+.stack-layer:last-child { border-bottom: none; }
+.stack-layer:hover { background: var(--bg3); }
+.stack-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem; color: var(--dimmer);
+  min-width: 24px; padding-top: 0.15rem;
+}
+.stack-icon { font-size: 1.1rem; flex-shrink: 0; }
+.stack-content h4 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem; color: var(--teal);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+.stack-content p { font-size: 0.85rem; color: var(--dim); margin: 0; }
+
+/* ── FOOTER ── */
+footer {
+  text-align: center; padding: 4rem 2rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem; color: var(--dimmer);
+  border-top: 1px solid var(--border);
+}
+
+/* ── ANIMATIONS ── */
+@keyframes rise { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
+
+@media(max-width:600px){
+  body { font-size: 16px; }
+  main { padding: 0 1.2rem 6rem; }
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<header>
+  <div class="eyebrow">Modules 5 & 6 · TurboQuant+</div>
+  <h1>The Art of <em>Selective Precision</em></h1>
+  <p class="hero-deck">Not every cache, layer, or token deserves the same treatment. Here's how TurboQuant learns to choose.</p>
+</header>
+
+<!-- CHAPTER TABS -->
+<nav class="chapter-nav">
+  <button class="ch-tab active" onclick="scrollTo('s1')">5.1 K vs V</button>
+  <button class="ch-tab" onclick="scrollTo('s2')">5.2 Softmax Amplification</button>
+  <button class="ch-tab" onclick="scrollTo('s3')">5.3 Asymmetric Configs</button>
+  <button class="ch-tab" onclick="scrollTo('s4')">6.1 Boundary V</button>
+  <button class="ch-tab" onclick="scrollTo('s5')">6.2 Sparse V</button>
+  <button class="ch-tab" onclick="scrollTo('s6')">6.3 Block Size</button>
+  <button class="ch-tab" onclick="scrollTo('s7')">Full Stack</button>
+</nav>
+
+<main>
+
+<!-- ═══════════════════ §1 K VS V ═══════════════════ -->
+<section id="s1">
+  <div class="sec-tag">Module 5 · § 01</div>
+  <h2>K and V are <em>Not Equal</em></h2>
+
+  <p>The attention formula has two caches. They look symmetric — both are matrices of shape <code>(seq_len × d)</code>. But they play <strong>fundamentally different roles</strong> in producing the output:</p>
+
+  <div class="math">Output = softmax( Q · Kᵀ / √d ) · V</div>
+
+  <p><strong>K determines which tokens get attention</strong> — its values flow through softmax before contributing to output. <strong>V determines what information flows</strong> — its values are simply weighted and summed after the softmax weights are fixed.</p>
+
+  <p>This asymmetry has a dramatic consequence for quantization errors. Add the <em class="t">same amount of noise</em> to K and to V — and see which causes more damage:</p>
+
+  <div class="viz">
+    <div class="viz-lbl">K error vs V error — equal noise, different damage</div>
+    <canvas class="vc" id="c-kv" height="200"></canvas>
+    <div class="viz-ctrls">
+      <span class="ctrl-lbl">noise σ:</span>
+      <input type="range" id="kv-noise" min="0.01" max="0.5" step="0.01" value="0.05">
+      <span class="badge" id="kv-badge">σ = 0.05</span>
+      <button class="btn ghost" id="kv-run">▶ Run 100 trials</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vst"><div class="vst-v" id="kv-kerr">—</div><div class="vst-k">K noise → output MSE</div></div>
+      <div class="vst"><div class="vst-v" id="kv-verr">—</div><div class="vst-k">V noise → output MSE</div></div>
+      <div class="vst"><div class="vst-v" id="kv-ratio" style="color:var(--red)">—</div><div class="vst-k">K/V damage ratio</div></div>
+    </div>
+  </div>
+
+  <div class="callout">
+    K errors cause <strong>8–9× more damage</strong> than V errors of equal magnitude — every single time, across every noise level.
+  </div>
+</section>
+
+<!-- ═══════════════════ §2 SOFTMAX AMPLIFICATION ═══════════════════ -->
+<section id="s2">
+  <div class="sec-tag">Module 5 · § 02</div>
+  <h2>Why Softmax <em>Amplifies</em> K Errors</h2>
+
+  <p>The difference comes down to one equation. Softmax is exponential:</p>
+
+  <div class="math">softmax(zᵢ + ε) ≈ softmax(zᵢ) × eᵉ</div>
+
+  <p>A small perturbation <code>ε</code> in logit space doesn't add a small amount to the attention weight — it <em class="r">multiplies</em> it by <code>eᵉ</code>. For <code>ε = 0.5</code>, that's a 65% weight increase. For <code>ε = 1.0</code>, it's 172%.</p>
+
+  <p>V errors bypass softmax entirely. An error <code>ε</code> in a V value contributes at most <code>wᵢ × ε</code> to the output — where <code>wᵢ</code> is an attention weight always ≤ 1. The error gets <em class="g">scaled down</em>, not amplified.</p>
+
+  <p>Drag the slider to add noise to the top attention score. Watch how the weight distribution shifts:</p>
+
+  <div class="viz">
+    <div class="viz-lbl">Softmax amplification — perturb one score, watch all weights shift</div>
+    <canvas class="vc" id="c-sm" height="200"></canvas>
+    <div class="viz-ctrls">
+      <span class="ctrl-lbl">perturbation ε:</span>
+      <input type="range" id="sm-eps" min="-0.8" max="0.8" step="0.01" value="0">
+      <span class="badge" id="sm-badge">ε = 0.00</span>
+      <button class="btn ghost" onclick="document.getElementById('sm-eps').value=0; drawSoftmax();">Reset</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vst"><div class="vst-v" id="sm-top">—</div><div class="vst-k">Top token weight</div></div>
+      <div class="vst"><div class="vst-v" id="sm-shift">—</div><div class="vst-k">Weight shift</div></div>
+      <div class="vst"><div class="vst-v" id="sm-status">Stable</div><div class="vst-k">Attention status</div></div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-tag">📐 The math</div>
+    <p>K quantization error → Δscore in dot product → <code>softmax(score + Δscore)</code> → exponential weight shift → wrong output. V quantization error → <code>weight × (V + ε)</code> → error bounded by <code>wᵢ × ε</code> → always small.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ §3 ASYMMETRIC CONFIGS ═══════════════════ -->
+<section id="s3">
+  <div class="sec-tag">Module 5 · § 03</div>
+  <h2>Same Bits, <em>Opposite</em> Results</h2>
+
+  <p>The most dramatic demonstration: take a fixed bit budget of ~5.8 bits per value average. Split it two ways:</p>
+
+  <table>
+    <tr><th>Config</th><th>K bits</th><th>V bits</th><th>Avg bpv</th><th>Compression</th><th>PPL impact</th></tr>
+    <tr><td>q8_0 / turbo3</td><td class="best">8.5</td><td>3.125</td><td>5.8</td><td>2.8×</td><td class="good">+1.1–2.1%</td></tr>
+    <tr><td>turbo3 / q8_0</td><td class="bad">3.125</td><td>8.5</td><td>5.8</td><td>2.8×</td><td class="bad">+catastrophic</td></tr>
+  </table>
+
+  <p>Identical average bits. <strong>500× quality difference</strong> — purely from deciding which cache gets compressed.</p>
+
+  <p>Click each config to see its attention output quality:</p>
+
+  <div class="viz">
+    <div class="viz-lbl">K/V config comparison — attention output MSE</div>
+    <canvas class="vc" id="c-cfg" height="220"></canvas>
+    <div class="viz-ctrls">
+      <button class="btn green" id="cfg-asym">✓ Asymmetric (q8_0-K / turbo3-V)</button>
+      <button class="btn red" id="cfg-sym">✗ Symmetric (turbo3-K / turbo3-V)</button>
+      <button class="btn red" id="cfg-rev">✗ Reversed (turbo3-K / q8_0-V)</button>
+      <button class="btn ghost" id="cfg-all">Compare All</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vst"><div class="vst-v" id="cfg-mse">—</div><div class="vst-k">Attention MSE</div></div>
+      <div class="vst"><div class="vst-v" id="cfg-verdict">—</div><div class="vst-k">Verdict</div></div>
+    </div>
+  </div>
+
+  <h3>The Safe Decision Tree</h3>
+
+  <pre><span class="c">Model weights?</span>
+│
+├── <span class="g">Q8_0 or higher</span>
+│   ├── Best:        -ctk turbo4 -ctv turbo4
+│   └── More:        -ctk turbo3 -ctv turbo3
+│
+└── <span class="a">Q4_K_M</span>
+    ├── <span class="r">Qwen2.5</span>     → MUST asymmetric: -ctk q8_0 -ctv turbo3
+    ├── Unknown      → Safe default:  -ctk q8_0 -ctv turbo4
+    └── Llama/Mistral 24B+ → Try symmetric, fallback to asymmetric</pre>
+
+  <div class="callout amber">
+    <strong>The safe universal default:</strong> keep K at q8_0, compress V as aggressively as your quality budget allows.
+  </div>
+</section>
+
+<!-- DIVIDER -->
+<div class="divider"><span>Module 6 — Advanced Optimizations</span></div>
+
+<!-- ═══════════════════ §4 BOUNDARY V ═══════════════════ -->
+<section id="s4">
+  <div class="sec-tag">Module 6 · § 01</div>
+  <h2>Boundary V: Not All Layers <em>Are Equal</em></h2>
+
+  <p>You know V can be compressed aggressively. But not every layer tolerates the same level of compression. The <strong>first 2 and last 2 layers</strong> are uniquely exposed:</p>
+
+  <table>
+    <tr><th>Layers</th><th>What they do</th><th>Error behaviour</th></tr>
+    <tr><td>First 2</td><td>Raw tokens → first hidden state</td><td class="bad">Errors propagate through ALL remaining layers</td></tr>
+    <tr><td>Middle N-4</td><td>Feature transformation</td><td class="good">Errors propagate through fewer layers — network self-corrects</td></tr>
+    <tr><td>Last 2</td><td>Hidden state → logit predictions</td><td class="bad">Errors go directly into token prediction — no recovery</td></tr>
+  </table>
+
+  <p>Boundary V protects exactly those 4 layers with high precision V, compresses everything else aggressively:</p>
+
+  <div class="math">layers 0, 1, N−2, N−1  →  V at q8_0 (8.5 bits)
+all middle layers        →  V at turbo2 (2.5 bits)</div>
+
+  <p>Adjust the model depth to see how the compression cost and quality recovery change:</p>
+
+  <div class="viz">
+    <div class="viz-lbl">Boundary V — per-layer precision and compression analysis</div>
+    <canvas class="vc" id="c-bv" height="220"></canvas>
+    <div class="viz-ctrls">
+      <span class="ctrl-lbl">layers:</span>
+      <input type="range" id="bv-layers" min="16" max="96" step="4" value="32">
+      <span class="badge" id="bv-badge">32 layers</span>
+    </div>
+    <div class="viz-stats">
+      <div class="vst"><div class="vst-v" id="bv-bpv">—</div><div class="vst-k">Boundary V bpv</div></div>
+      <div class="vst"><div class="vst-v" id="bv-overhead">—</div><div class="vst-k">Overhead vs turbo2</div></div>
+      <div class="vst"><div class="vst-v" id="bv-protected">—</div><div class="vst-k">Layers protected</div></div>
+      <div class="vst"><div class="vst-v" id="bv-recovery">—</div><div class="vst-k">Quality recovery</div></div>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>Model</th><th>turbo2 PPL</th><th>Boundary V PPL</th><th>turbo3 PPL</th><th>Recovered</th></tr>
+    <tr><td>phi-4 (40 layers)</td><td>4.835</td><td class="best">4.784</td><td>4.742</td><td class="good">55%</td></tr>
+    <tr><td>Qwen2.5-7B (28 layers)</td><td>6.911</td><td class="best">6.835</td><td>6.707</td><td class="good">37%</td></tr>
+    <tr><td>Qwen3.5-35B MoE (64 layers)</td><td>5.257</td><td class="best">5.148</td><td>5.137</td><td class="best">91%</td></tr>
+  </table>
+
+  <p>The 64-layer model recovers <strong>91%</strong> of the quality gap because 4 boundary layers represent a smaller fraction of a deeper model — same protection, lower proportional cost.</p>
+</section>
+
+<!-- ═══════════════════ §5 SPARSE V ═══════════════════ -->
+<section id="s5">
+  <div class="sec-tag">Module 6 · § 02</div>
+  <h2>Sparse V: Skip What <em>Doesn't Matter</em></h2>
+
+  <p>After computing <code>softmax(QKᵀ/√d)</code>, you get attention weights over all tokens. At long context, most of those weights are <strong>negligibly small</strong> — the model is paying essentially zero attention to most past tokens.</p>
+
+  <p>If a token has weight <code>0.000001</code>, its V vector contributes <code>0.000001 × V</code> to the output — essentially nothing. Yet standard attention still dequantizes every V vector, loading all those indices and norm values from memory.</p>
+
+  <p><strong>Sparse V skips dequantization for tokens below a threshold.</strong> The weights are computed from K <em>before</em> V is touched — so we already know which tokens to skip.</p>
+
+  <div class="viz">
+    <div class="viz-lbl">Attention weight distribution — how sparse is attention at long context?</div>
+    <canvas class="vc" id="c-sparse" height="220"></canvas>
+    <div class="viz-ctrls">
+      <span class="ctrl-lbl">context length:</span>
+      <input type="range" id="sp-ctx" min="7" max="15" step="1" value="10">
+      <span class="badge" id="sp-badge">1024 tokens</span>
+      <button class="btn ghost" id="sp-resample">↺ Resample</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vst"><div class="vst-v" id="sp-skip">—</div><div class="vst-k">Skippable (w < 1e-6)</div></div>
+      <div class="vst"><div class="vst-v" id="sp-top5">—</div><div class="vst-k">Top 5 tokens hold</div></div>
+      <div class="vst"><div class="vst-v" id="sp-error">≈ 0</div><div class="vst-k">Quality impact</div></div>
+    </div>
+  </div>
+
+  <div class="callout">
+    Skipping 0.1% sounds tiny — but at 32K context that's 32 fewer vector loads per head per token. Memory bandwidth is the bottleneck at long context, not compute. Small reductions in loads give disproportionate speedups.
+  </div>
+
+  <div class="insight">
+    <div class="insight-tag">⚡ Real-world results</div>
+    <p><strong>+22.8% decode throughput</strong> at 32K context on MoE models (M5 Max). <strong>Zero perplexity impact</strong> (validated at 32K, 50 chunks, wikitext-103). Sparse V actually <em class="g">improved</em> NIAH retrieval (9/9 vs 7/9) — dequantizing near-zero positions may introduce tiny artifacts. Skipping them removes that noise.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ §6 BLOCK SIZE ═══════════════════ -->
+<section id="s6">
+  <div class="sec-tag">Module 6 · § 03</div>
+  <h2>Block Size 128: <em>Free</em> Compression</h2>
+
+  <p>PolarQuant stores each vector as: <strong>indices</strong> (2/3/4 bits each) + <strong>one norm</strong> (2 bytes). The original implementation organised storage in 32-element blocks — each block getting its own norm.</p>
+
+  <p>For a 128-dimensional vector:</p>
+
+  <pre><span class="c">Block size 32:  128 dims / 32 = 4 blocks → 4 norms × 2 bytes = 8 bytes</span>
+<span class="r">But all 4 norms store the SAME VALUE — 3 are pure redundancy!</span>
+
+<span class="c">Block size 128: 128 dims / 128 = 1 block → 1 norm × 2 bytes = 2 bytes</span>
+<span class="g">Save 6 bytes per vector. Zero quality change.</span></pre>
+
+  <div class="viz">
+    <div class="viz-lbl">Block size vs bits-per-value — eliminating redundant norms</div>
+    <canvas class="vc" id="c-block" height="200"></canvas>
+    <div class="viz-stats">
+      <div class="vst"><div class="vst-v" id="blk-32">3.375 bpv</div><div class="vst-k">Block size 32</div></div>
+      <div class="vst"><div class="vst-v" id="blk-128" style="color:var(--green)">3.125 bpv</div><div class="vst-k">Block size 128</div></div>
+      <div class="vst"><div class="vst-v" id="blk-gain" style="color:var(--teal)">+12%</div><div class="vst-k">Compression gain</div></div>
+      <div class="vst"><div class="vst-v" id="blk-quality" style="color:var(--green)">Zero</div><div class="vst-k">Quality impact</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ §7 FULL STACK ═══════════════════ -->
+<section id="s7">
+  <div class="sec-tag">Modules 5 & 6 · Summary</div>
+  <h2>The Complete <em>Optimization Stack</em></h2>
+
+  <p>All six layers are <strong>orthogonal</strong> — they don't interfere with each other. Enable all six and you get all six benefits simultaneously.</p>
+
+  <div class="stack">
+    <div class="stack-layer">
+      <div class="stack-num">01</div>
+      <div class="stack-icon">🔄</div>
+      <div class="stack-content">
+        <h4>PolarQuant Core</h4>
+        <p>WHT rotation → N(0,1/d) → Lloyd-Max optimal codebook → norm handling</p>
+      </div>
+    </div>
+    <div class="stack-layer">
+      <div class="stack-num">02</div>
+      <div class="stack-icon">🎯</div>
+      <div class="stack-content">
+        <h4>Algorithm Choice</h4>
+        <p>turbo4 for K (no QJL). MSE-only PolarQuant for V. More centroids beats error correction.</p>
+      </div>
+    </div>
+    <div class="stack-layer">
+      <div class="stack-num">03</div>
+      <div class="stack-icon">⚖️</div>
+      <div class="stack-content">
+        <h4>Asymmetric K/V</h4>
+        <p>K at q8_0 — protected from softmax amplification. V compressed aggressively (turbo2–turbo4).</p>
+      </div>
+    </div>
+    <div class="stack-layer">
+      <div class="stack-num">04</div>
+      <div class="stack-icon">🛡️</div>
+      <div class="stack-content">
+        <h4>Boundary V</h4>
+        <p>First 2 + last 2 layers at q8_0-V. Middle layers at turbo2-V. Recovers 37–91% quality gap.</p>
+      </div>
+    </div>
+    <div class="stack-layer">
+      <div class="stack-num">05</div>
+      <div class="stack-icon">⚡</div>
+      <div class="stack-content">
+        <h4>Sparse V</h4>
+        <p>Skip dequant for attention weights below 1e-6. +22.8% decode speed. Zero quality loss.</p>
+      </div>
+    </div>
+    <div class="stack-layer">
+      <div class="stack-num">06</div>
+      <div class="stack-icon">📦</div>
+      <div class="stack-content">
+        <h4>Block Size 128</h4>
+        <p>One norm per vector instead of four. +12% compression for free. Zero quality impact.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-lbl">Cumulative improvement — enabling optimizations one by one</div>
+    <canvas class="vc" id="c-stack" height="220"></canvas>
+    <div class="viz-ctrls">
+      <button class="btn" id="stk-prev">← Remove</button>
+      <button class="btn green" id="stk-next">Add Layer →</button>
+      <button class="btn ghost" id="stk-reset">Reset</button>
+      <span class="ctrl-lbl" id="stk-label" style="color:var(--teal)">Layer 0 / 6</span>
+    </div>
+    <div class="viz-stats">
+      <div class="vst"><div class="vst-v" id="stk-comp">1.0×</div><div class="vst-k">Compression</div></div>
+      <div class="vst"><div class="vst-v" id="stk-speed">1.0×</div><div class="vst-k">Decode speed</div></div>
+      <div class="vst"><div class="vst-v" id="stk-qual">Baseline</div><div class="vst-k">Quality</div></div>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>Final result</th><th>Value</th></tr>
+    <tr><td>KV cache compression</td><td class="best">3.8–6.4×</td></tr>
+    <tr><td>PPL impact</td><td class="good">+0.23% to +6.5%</td></tr>
+    <tr><td>Decode speed at 32K context</td><td class="best">+22.8%</td></tr>
+    <tr><td>Memory saved at 128K / 70B</td><td class="best">~5 GB</td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  A visual essay covering TurboQuant+ Modules 5 & 6 — Asymmetric K/V and Advanced Techniques<br>
+  Simulations are illustrative approximations, not exact library outputs.
+</footer>
+
+<script>
+const TAU = Math.PI * 2;
+function sr(s){ let x=s>>>0; return ()=>{ x=Math.imul(1664525,x)+1013904223>>>0; return x/0x100000000; }; }
+function gr(r){ let u,v; do{u=r();}while(!u); do{v=r();}while(!v); return Math.sqrt(-2*Math.log(u))*Math.cos(TAU*v); }
+function softmax(v){ const m=Math.max(...v); const e=v.map(x=>Math.exp(x-m)); const s=e.reduce((a,b)=>a+b,0); return e.map(x=>x/s); }
+function norm(v){ return Math.sqrt(v.reduce((s,x)=>s+x*x,0)); }
+function clamp(x,a,b){ return Math.max(a,Math.min(b,x)); }
+
+function C(id,h){
+  const cv=document.getElementById(id);
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.offsetWidth*dpr, H=(h||200)*dpr;
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  return {ctx,W:cv.offsetWidth,H:h||200};
+}
+
+const COL={ teal:'#0e7c6e', teal2:'#1aab98', red:'#c4372a', green:'#1a7a42', amber:'#b8720a', blue:'#1e5fa8', dim:'#c4bdb4', ink:'#1a1612' };
+
+// progress + scroll
+window.addEventListener('scroll',()=>{
+  document.getElementById('prog').style.width=(window.scrollY/(document.body.scrollHeight-window.innerHeight)*100)+'%';
+  // tab highlighting
+  const secs=['s1','s2','s3','s4','s5','s6','s7'];
+  const tabs=document.querySelectorAll('.ch-tab');
+  let active=0;
+  secs.forEach((id,i)=>{ const el=document.getElementById(id); if(el&&el.getBoundingClientRect().top<200) active=i; });
+  tabs.forEach((t,i)=>t.classList.toggle('active',i===active));
+});
+
+function scrollTo(id){ document.getElementById(id).scrollIntoView({behavior:'smooth'}); }
+
+// intersection
+const obs=new IntersectionObserver(e=>e.forEach(x=>{ if(x.isIntersecting) x.target.classList.add('vis'); }),{threshold:0.08});
+document.querySelectorAll('section').forEach(s=>obs.observe(s));
+
+/* ════ §1 K vs V ════ */
+let kvSeed=42;
+function runKV(){
+  const noise=parseFloat(document.getElementById('kv-noise').value);
+  document.getElementById('kv-badge').textContent=`σ = ${noise.toFixed(2)}`;
+  const D=32, SEQ=50, TRIALS=30;
+  const rng=sr(kvSeed);
+  let kSum=0,vSum=0;
+  for(let t=0;t<TRIALS;t++){
+    const Q=Array.from({length:D},()=>gr(rng));
+    const K=Array.from({length:SEQ},()=>Array.from({length:D},()=>gr(rng)));
+    const V=Array.from({length:SEQ},()=>Array.from({length:D},()=>gr(rng)));
+    const scores=K.map(k=>k.reduce((s,x,i)=>s+x*Q[i],0)/Math.sqrt(D));
+    const w=softmax(scores);
+    const out=Array.from({length:D},(_,d)=>w.reduce((s,wi,j)=>s+wi*V[j][d],0));
+    // K noise
+    const Kn=K.map(k=>k.map(x=>x+gr(rng)*noise));
+    const wk=softmax(Kn.map(k=>k.reduce((s,x,i)=>s+x*Q[i],0)/Math.sqrt(D)));
+    const outK=Array.from({length:D},(_,d)=>wk.reduce((s,wi,j)=>s+wi*V[j][d],0));
+    kSum+=outK.reduce((s,x,i)=>s+(x-out[i])**2,0)/D;
+    // V noise
+    const Vn=V.map(v=>v.map(x=>x+gr(rng)*noise));
+    const outV=Array.from({length:D},(_,d)=>w.reduce((s,wi,j)=>s+wi*Vn[j][d],0));
+    vSum+=outV.reduce((s,x,i)=>s+(x-out[i])**2,0)/D;
+  }
+  const kErr=kSum/TRIALS, vErr=vSum/TRIALS;
+  document.getElementById('kv-kerr').textContent=kErr.toFixed(5);
+  document.getElementById('kv-verr').textContent=vErr.toFixed(5);
+  const ratio=(kErr/vErr).toFixed(1);
+  document.getElementById('kv-ratio').textContent=ratio+'×';
+
+  const {ctx,W,H}=C('c-kv',200);
+  ctx.clearRect(0,0,W,H);
+  const pad={l:20,r:20,t:30,b:40};
+  const bars=[
+    {label:'K error',val:kErr,color:COL.red},
+    {label:'V error',val:vErr,color:COL.green}
+  ];
+  const maxV=Math.max(kErr,vErr,1e-6);
+  const bw=(W-pad.l-pad.r)/bars.length*0.5;
+  const ph=H-pad.t-pad.b;
+  bars.forEach((b,i)=>{
+    const bh=b.val/maxV*ph;
+    const bx=pad.l+(i+0.25)*(W-pad.l-pad.r)/bars.length;
+    ctx.fillStyle=b.color+'cc';
+    ctx.fillRect(bx,pad.t+ph-bh,bw,bh);
+    ctx.font='bold 11px DM Sans,sans-serif';
+    ctx.fillStyle=b.color; ctx.textAlign='center';
+    ctx.fillText(b.label,bx+bw/2,H-10);
+    ctx.fillText(b.val.toFixed(5),bx+bw/2,pad.t+ph-bh-6);
+  });
+  // ratio arrow
+  const x1=pad.l+0.25*(W-pad.l-pad.r)/2+bw;
+  const x2=pad.l+(1+0.25)*(W-pad.l-pad.r)/2;
+  const ay=pad.t+20;
+  ctx.beginPath(); ctx.moveTo(x1+10,ay); ctx.lineTo(x2-10,ay);
+  ctx.strokeStyle=COL.red+'80'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.font='10px IBM Plex Mono,monospace'; ctx.fillStyle=COL.red;
+  ctx.textAlign='center'; ctx.fillText(ratio+'× more damage',( x1+x2)/2,ay-6);
+}
+
+document.getElementById('kv-noise').addEventListener('input',runKV);
+document.getElementById('kv-run').addEventListener('click',()=>{ kvSeed=(kvSeed+7)%9999; runKV(); });
+runKV();
+
+/* ════ §2 SOFTMAX ════ */
+const baseScores=[2.0,1.6,1.1,0.7,0.3,0.0,-0.3,-0.7,-1.0,-1.4];
+function drawSoftmax(){
+  const eps=parseFloat(document.getElementById('sm-eps').value);
+  document.getElementById('sm-badge').textContent=`ε = ${eps>=0?'+':''}${eps.toFixed(2)}`;
+  const noisy=baseScores.map((s,i)=>i===0?s+eps:s);
+  const wTrue=softmax(baseScores), wNoisy=softmax(noisy);
+  const shift=Math.abs(wNoisy[0]-wTrue[0]);
+
+  const {ctx,W,H}=C('c-sm',200);
+  ctx.clearRect(0,0,W,H);
+  const n=baseScores.length;
+  const pad={l:20,r:20,t:30,b:30};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  const maxW=Math.max(...wTrue,...wNoisy);
+  const bw=pw/n;
+
+  wTrue.forEach((w,i)=>{
+    const bh=w/maxW*ph;
+    ctx.fillStyle=COL.teal+'55';
+    ctx.fillRect(pad.l+i*bw+2,pad.t+ph-bh,bw/2-2,bh);
+  });
+  wNoisy.forEach((w,i)=>{
+    const bh=w/maxW*ph;
+    const col=i===0&&eps!==0?COL.red:COL.amber;
+    ctx.fillStyle=col+(i===0&&eps!==0?'cc':'88');
+    ctx.fillRect(pad.l+i*bw+bw/2,pad.t+ph-bh,bw/2-2,bh);
+  });
+
+  ctx.font='9px IBM Plex Mono,monospace';
+  ctx.fillStyle=COL.teal; ctx.textAlign='left'; ctx.fillText('■ true',pad.l,18);
+  ctx.fillStyle=COL.amber; ctx.fillText('■ perturbed',pad.l+55,18);
+  baseScores.forEach((_,i)=>{ ctx.fillStyle='#c4bdb4'; ctx.textAlign='center'; ctx.fillText(`t${i}`,pad.l+i*bw+bw/2,H-6); });
+
+  document.getElementById('sm-top').textContent=(wNoisy[0]*100).toFixed(1)+'%';
+  document.getElementById('sm-shift').textContent=(eps===0?'—':(shift*100).toFixed(1)+'%');
+  const st=shift>0.1?'⚠ Distorted':shift>0.04?'Shifting':'Stable';
+  const sc=shift>0.1?COL.red:shift>0.04?COL.amber:COL.green;
+  document.getElementById('sm-status').textContent=st;
+  document.getElementById('sm-status').style.color=sc;
+}
+document.getElementById('sm-eps').addEventListener('input',drawSoftmax);
+drawSoftmax();
+window.addEventListener('resize',drawSoftmax);
+
+/* ════ §3 CONFIG COMPARE ════ */
+let cfgMode='none';
+const cfgData={
+  asym: {label:'q8_0-K / turbo3-V',mse:0.00012,color:COL.green,verdict:'✓ Safe — K protected'},
+  sym:  {label:'turbo3-K / turbo3-V',mse:0.00081,color:COL.amber,verdict:'⚠ Model-dependent'},
+  rev:  {label:'turbo3-K / q8_0-V',mse:0.00340,color:COL.red,verdict:'✗ Dangerous — K compressed'},
+};
+
+function drawCfg(){
+  const {ctx,W,H}=C('c-cfg',220);
+  ctx.clearRect(0,0,W,H);
+  const items=cfgMode==='all'?Object.values(cfgData):(cfgData[cfgMode]?[cfgData[cfgMode]]:[]);
+  if(!items.length){
+    ctx.font='12px IBM Plex Mono,monospace'; ctx.fillStyle=COL.dim;
+    ctx.textAlign='center'; ctx.fillText('Click a config to compare',W/2,H/2);
+    return;
+  }
+  const maxMSE=Math.max(...Object.values(cfgData).map(d=>d.mse));
+  const pad={l:20,r:120,t:30,b:20};
+  const ph=H-pad.t-pad.b;
+  const bh=(ph/3)-8;
+  items.forEach((d,i)=>{
+    const bw=(d.mse/maxMSE)*(W-pad.l-pad.r);
+    const by=pad.t+i*(ph/3)+4;
+    ctx.fillStyle=d.color+'cc';
+    ctx.fillRect(pad.l,by,bw,bh);
+    ctx.font='bold 10px IBM Plex Mono,monospace'; ctx.fillStyle=d.color;
+    ctx.textAlign='left'; ctx.fillText(d.label,pad.l+bw+8,by+bh/2+4);
+    ctx.fillStyle=COL.ink; ctx.font='10px IBM Plex Mono,monospace';
+    ctx.fillText(d.mse.toFixed(5),pad.l+bw-70,by+bh/2+4);
+  });
+  ctx.font='9px IBM Plex Mono,monospace'; ctx.fillStyle=COL.dim;
+  ctx.textAlign='left'; ctx.fillText('Attention output MSE →',pad.l,H-4);
+
+  if(cfgMode!=='all'&&cfgData[cfgMode]){
+    document.getElementById('cfg-mse').textContent=cfgData[cfgMode].mse.toFixed(5);
+    document.getElementById('cfg-verdict').textContent=cfgData[cfgMode].verdict;
+    document.getElementById('cfg-verdict').style.color=cfgData[cfgMode].color;
+  } else {
+    document.getElementById('cfg-mse').textContent='See bars →';
+    document.getElementById('cfg-verdict').textContent='Asymmetric wins';
+    document.getElementById('cfg-verdict').style.color=COL.teal;
+  }
+}
+['asym','sym','rev','all'].forEach(m=>{
+  const el=document.getElementById('cfg-'+m);
+  if(el) el.addEventListener('click',()=>{ cfgMode=m; drawCfg(); });
+});
+drawCfg();
+window.addEventListener('resize',drawCfg);
+
+/* ════ §4 BOUNDARY V ════ */
+function drawBV(){
+  const layers=parseInt(document.getElementById('bv-layers').value);
+  document.getElementById('bv-badge').textContent=`${layers} layers`;
+  const bpv=(4*8.5+(layers-4)*2.5)/layers;
+  const overhead=((bpv/2.5)-1)*100;
+  const protected_pct=(4/layers*100).toFixed(1);
+  // Quality recovery scales with layers (larger models benefit more)
+  const recovery=Math.min(95, 30+layers*0.9);
+
+  document.getElementById('bv-bpv').textContent=bpv.toFixed(3)+' bpv';
+  document.getElementById('bv-overhead').textContent='+'+overhead.toFixed(0)+'%';
+  document.getElementById('bv-protected').textContent='4 / '+layers+' ('+protected_pct+'%)';
+  document.getElementById('bv-recovery').textContent='~'+recovery.toFixed(0)+'% gap recovered';
+
+  const {ctx,W,H}=C('c-bv',220);
+  ctx.clearRect(0,0,W,H);
+  const pad={l:10,r:10,t:30,b:30};
+  const pw=W-pad.l-pad.r, lw=pw/layers;
+  const barH=80;
+  const by=(H-barH)/2;
+
+  // Draw each layer
+  for(let i=0;i<layers;i++){
+    const isBoundary=i<2||i>=layers-2;
+    const bx=pad.l+i*lw;
+    ctx.fillStyle=isBoundary?COL.teal+'dd':COL.dim+'55';
+    ctx.fillRect(bx+0.5,by,Math.max(lw-1,0.5),barH);
+  }
+
+  // Labels
+  ctx.font='9px IBM Plex Mono,monospace';
+  ctx.fillStyle=COL.teal; ctx.textAlign='center';
+  ctx.fillText('q8_0-V',pad.l+lw,by-8);
+  ctx.fillText('q8_0-V',pad.l+(layers-1)*lw,by-8);
+  ctx.fillStyle=COL.dim;
+  ctx.fillText('turbo2-V (middle layers)',W/2,by-8);
+
+  // bpv label
+  ctx.fillStyle=COL.teal; ctx.textAlign='center';
+  ctx.font='bold 11px IBM Plex Mono,monospace';
+  ctx.fillText(`avg ${bpv.toFixed(2)} bpv`,W/2,by+barH+20);
+
+  // Compression bars comparison
+  const configs=[
+    {label:'turbo2',bpv:2.5,color:COL.dim},
+    {label:'BoundaryV',bpv,color:COL.teal},
+    {label:'turbo3',bpv:3.125,color:COL.amber},
+  ];
+  const maxBpv=Math.max(...configs.map(c=>c.bpv));
+  configs.forEach((cfg,i)=>{
+    const bw=(cfg.bpv/maxBpv)*80;
+    const cx=W-110+i*0;
+    // just show as text
+  });
+}
+document.getElementById('bv-layers').addEventListener('input',drawBV);
+drawBV();
+window.addEventListener('resize',drawBV);
+
+/* ════ §5 SPARSE V ════ */
+let sparseSeed=42;
+function drawSparse(){
+  const bits=parseInt(document.getElementById('sp-ctx').value);
+  const ctx_len=1<<bits;
+  document.getElementById('sp-badge').textContent=ctx_len.toLocaleString()+' tokens';
+
+  const rng=sr(sparseSeed);
+  const D=16;
+  const Q=Array.from({length:D},()=>gr(rng));
+  const scores=Array.from({length:ctx_len},()=>{
+    const k=Array.from({length:D},()=>gr(rng));
+    return k.reduce((s,x,i)=>s+x*Q[i],0)/Math.sqrt(D);
+  });
+  const w=softmax(scores);
+  const threshold=1e-6;
+  const skippable=w.filter(x=>x<threshold).length;
+  const skipPct=(skippable/ctx_len*100).toFixed(2);
+  const top5=w.slice().sort((a,b)=>b-a).slice(0,5).reduce((s,x)=>s+x,0)*100;
+
+  document.getElementById('sp-skip').textContent=skipPct+'%';
+  document.getElementById('sp-top5').textContent=top5.toFixed(1)+'%';
+
+  // Draw weight distribution histogram
+  const {ctx,W,H}=C('c-sparse',220);
+  ctx.clearRect(0,0,W,H);
+  const pad={l:40,r:20,t:30,b:30};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+
+  // log10 histogram
+  const bins=50;
+  const minLog=-10, maxLog=0;
+  const counts=new Array(bins).fill(0);
+  w.forEach(wi=>{
+    const log=Math.log10(Math.max(wi,1e-15));
+    const bi=Math.floor((log-minLog)/(maxLog-minLog)*bins);
+    if(bi>=0&&bi<bins) counts[bi]++;
+  });
+  const maxC=Math.max(...counts,1);
+  const bw=pw/bins;
+
+  // Threshold line position
+  const thresholdLog=Math.log10(threshold);
+  const threshX=pad.l+(thresholdLog-minLog)/(maxLog-minLog)*pw;
+
+  // Shade "skip zone"
+  ctx.fillStyle='rgba(196,55,42,0.07)';
+  ctx.fillRect(pad.l,pad.t,threshX-pad.l,ph);
+
+  counts.forEach((c,i)=>{
+    const bh=c/maxC*ph;
+    const bx=pad.l+i*bw;
+    const logCenter=minLog+(i+0.5)/bins*(maxLog-minLog);
+    const isBelowThresh=logCenter<thresholdLog;
+    ctx.fillStyle=isBelowThresh?COL.red+'aa':COL.teal+'aa';
+    ctx.fillRect(bx,pad.t+ph-bh,Math.max(bw-0.5,0.5),bh);
+  });
+
+  // Threshold line
+  ctx.beginPath(); ctx.moveTo(threshX,pad.t); ctx.lineTo(threshX,pad.t+ph);
+  ctx.strokeStyle=COL.red; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.font='9px IBM Plex Mono,monospace'; ctx.fillStyle=COL.red; ctx.textAlign='left';
+  ctx.fillText('threshold 1e-6',threshX+4,pad.t+14);
+
+  // Axis labels
+  [-10,-8,-6,-4,-2,0].forEach(v=>{
+    const x=pad.l+(v-minLog)/(maxLog-minLog)*pw;
+    ctx.fillStyle=COL.dim; ctx.font='8px IBM Plex Mono,monospace'; ctx.textAlign='center';
+    ctx.fillText(`10^${v}`,x,pad.t+ph+16);
+  });
+  ctx.fillStyle=COL.dim; ctx.textAlign='center';
+  ctx.fillText('attention weight (log scale)',pad.l+pw/2,H-2);
+
+  // Labels
+  ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='right';
+  ctx.fillStyle=COL.red; ctx.fillText('← skip zone',threshX-4,pad.t+28);
+  ctx.fillStyle=COL.teal; ctx.textAlign='left'; ctx.fillText('dequantize →',threshX+4,pad.t+28);
+}
+document.getElementById('sp-ctx').addEventListener('input',drawSparse);
+document.getElementById('sp-resample').addEventListener('click',()=>{ sparseSeed=(sparseSeed+13)%9999; drawSparse(); });
+drawSparse();
+window.addEventListener('resize',drawSparse);
+
+/* ════ §6 BLOCK SIZE ════ */
+function drawBlock(){
+  const {ctx,W,H}=C('c-block',200);
+  ctx.clearRect(0,0,W,H);
+  const sizes=[16,32,64,128];
+  const bpvs=sizes.map(bs=>{
+    const nBlocks=128/bs;
+    const normBits=nBlocks*16;
+    const dataBits=128*3;
+    return (normBits+dataBits)/128;
+  });
+  const maxBpv=Math.max(...bpvs);
+  const pad={l:50,r:20,t:30,b:40};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  const bw=pw/sizes.length*0.6;
+
+  sizes.forEach((bs,i)=>{
+    const bh=bpvs[i]/maxBpv*ph;
+    const bx=pad.l+i*(pw/sizes.length)+(pw/sizes.length-bw)/2;
+    const isOpt=bs===128;
+    ctx.fillStyle=isOpt?COL.green+'cc':COL.dim+'66';
+    ctx.fillRect(bx,pad.t+ph-bh,bw,bh);
+    ctx.font=`${isOpt?'bold ':''} 10px IBM Plex Mono,monospace`;
+    ctx.fillStyle=isOpt?COL.green:COL.dim;
+    ctx.textAlign='center';
+    ctx.fillText(bpvs[i].toFixed(3),bx+bw/2,pad.t+ph-bh-6);
+    ctx.fillText('block '+bs,bx+bw/2,pad.t+ph+14);
+    if(isOpt) ctx.fillText('✓ optimal',bx+bw/2,pad.t+ph+26);
+    // Norm boxes
+    const nBlocks=128/bs;
+    for(let n=0;n<nBlocks;n++){
+      const nx=bx+n*(bw/nBlocks);
+      ctx.strokeStyle=n===0?COL.teal:COL.red+'80';
+      ctx.lineWidth=1.5;
+      ctx.strokeRect(nx+1,pad.t+4,(bw/nBlocks)-2,12);
+      if(n>0){
+        ctx.font='6px IBM Plex Mono,monospace';
+        ctx.fillStyle=COL.red+'80'; ctx.textAlign='center';
+        ctx.fillText('dup',nx+bw/nBlocks/2,pad.t+12);
+      }
+    }
+  });
+
+  // y-axis
+  ctx.font='9px IBM Plex Mono,monospace'; ctx.fillStyle=COL.dim;
+  ctx.textAlign='right';
+  [2.5,3.0,3.5].forEach(v=>{
+    const y=pad.t+ph-(v/maxBpv)*ph;
+    ctx.fillText(v.toFixed(1),pad.l-4,y+3);
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y);
+    ctx.strokeStyle='rgba(196,189,180,0.3)'; ctx.lineWidth=1; ctx.stroke();
+  });
+  ctx.save(); ctx.translate(12,pad.t+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.fillText('bits per value',0,0);
+  ctx.restore();
+}
+drawBlock();
+window.addEventListener('resize',drawBlock);
+
+/* ════ §7 STACK ════ */
+let stkLayer=0;
+const stkLayers=[
+  {name:'Baseline (fp16)',comp:1.0,speed:1.0,qual:'Baseline'},
+  {name:'+ PolarQuant Core',comp:4.0,speed:1.0,qual:'Good'},
+  {name:'+ Algorithm Choice (turbo4)',comp:3.8,speed:1.05,qual:'Better'},
+  {name:'+ Asymmetric K/V',comp:2.8,speed:1.0,qual:'Safe'},
+  {name:'+ Boundary V',comp:2.9,speed:1.0,qual:'Excellent'},
+  {name:'+ Sparse V',comp:2.9,speed:1.228,qual:'Fast'},
+  {name:'+ Block Size 128',comp:3.2,speed:1.228,qual:'Optimal ✓'},
+];
+
+function drawStack(){
+  const {ctx,W,H}=C('c-stack',220);
+  ctx.clearRect(0,0,W,H);
+  const n=stkLayer+1;
+  const layers=stkLayers.slice(0,n);
+  const pad={l:20,r:20,t:20,b:40};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  const bh=(ph/stkLayers.length)-3;
+
+  stkLayers.forEach((l,i)=>{
+    const enabled=i<n;
+    const by=pad.t+i*(ph/stkLayers.length);
+    const bw=enabled?(l.comp/6)*pw:pw*0.1;
+    ctx.fillStyle=enabled?COL.teal+(i===n-1?'ee':'66'):COL.dim+'22';
+    ctx.fillRect(pad.l,by,bw,bh);
+    ctx.font=`${i===n-1?'bold ':''} 9px IBM Plex Mono,monospace`;
+    ctx.fillStyle=enabled?COL.ink:COL.dim;
+    ctx.textAlign='left';
+    ctx.fillText(l.name,pad.l+bw+6,by+bh/2+3);
+    if(enabled){
+      ctx.fillStyle=COL.teal; ctx.textAlign='right';
+      ctx.fillText(l.comp.toFixed(1)+'×',pad.l+bw-4,by+bh/2+3);
+    }
+  });
+
+  const cur=stkLayers[Math.max(0,stkLayer)];
+  document.getElementById('stk-comp').textContent=cur.comp.toFixed(1)+'×';
+  document.getElementById('stk-speed').textContent=cur.speed.toFixed(2)+'×';
+  document.getElementById('stk-qual').textContent=cur.qual;
+  document.getElementById('stk-label').textContent=`Layer ${stkLayer} / ${stkLayers.length-1}`;
+}
+
+document.getElementById('stk-next').addEventListener('click',()=>{ if(stkLayer<stkLayers.length-1){stkLayer++;drawStack();} });
+document.getElementById('stk-prev').addEventListener('click',()=>{ if(stkLayer>0){stkLayer--;drawStack();} });
+document.getElementById('stk-reset').addEventListener('click',()=>{ stkLayer=0; drawStack(); });
+drawStack();
+window.addEventListener('resize',drawStack);
+</script>
+</body>
+</html>

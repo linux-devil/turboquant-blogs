@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PolarQuant — Interactive Algorithm Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080b10;
+  --bg2:      #0d1117;
+  --bg3:      #131920;
+  --bg4:      #1a2233;
+  --blue:     #3b9eff;
+  --blue2:    #1a5fa8;
+  --cyan:     #00d4ff;
+  --amber:    #ffb830;
+  --amber2:   #7a5200;
+  --green:    #39e89e;
+  --red:      #ff5c5c;
+  --purple:   #a97bff;
+  --text:     #dce8f5;
+  --dim:      #5a7a9a;
+  --dimmer:   #2a3d54;
+  --border:   #1e2d3d;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── HEADER ─────────────────────────────── */
+header {
+  padding: 3rem 2rem 2rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 50%, rgba(59,158,255,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 80% 50%, rgba(255,184,48,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.65rem; letter-spacing: 0.2em;
+  color: var(--cyan); border: 1px solid rgba(0,212,255,0.3);
+  padding: 0.25rem 0.8rem; border-radius: 2px;
+  margin-bottom: 1.2rem; text-transform: uppercase;
+}
+
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  font-weight: 800; color: var(--text);
+  letter-spacing: -0.02em; margin-bottom: 0.6rem;
+}
+
+h1 span { color: var(--amber); }
+
+.subtitle {
+  color: var(--dim); font-size: 0.8rem;
+  max-width: 600px; margin: 0 auto 2rem;
+}
+
+/* ─── LAYOUT ─────────────────────────────── */
+.app {
+  max-width: 1100px; margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+/* ─── CONTROLS BAR ────────────────────────── */
+.controls-bar {
+  display: flex; align-items: center; gap: 1rem;
+  flex-wrap: wrap;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem 1.4rem;
+}
+
+.ctrl-group {
+  display: flex; align-items: center; gap: 0.7rem;
+}
+
+.ctrl-label {
+  font-size: 0.65rem; letter-spacing: 0.12em;
+  color: var(--dim); text-transform: uppercase; white-space: nowrap;
+}
+
+select, input[type=range] {
+  background: var(--bg3); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  font-family: 'Space Mono', monospace; font-size: 0.75rem;
+  padding: 0.3rem 0.6rem; outline: none;
+  cursor: pointer;
+}
+
+select:focus { border-color: var(--blue); }
+
+input[type=range] {
+  -webkit-appearance: none; height: 4px;
+  background: var(--border); padding: 0; border: none;
+  width: 120px;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--blue); cursor: pointer;
+  box-shadow: 0 0 8px rgba(59,158,255,0.5);
+}
+
+.val-badge {
+  font-size: 0.75rem; color: var(--amber);
+  background: rgba(255,184,48,0.1);
+  border: 1px solid rgba(255,184,48,0.2);
+  padding: 0.2rem 0.5rem; border-radius: 4px;
+  min-width: 70px; text-align: center;
+}
+
+.btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem; letter-spacing: 0.08em;
+  color: var(--bg); background: var(--blue);
+  border: none; border-radius: 5px;
+  padding: 0.45rem 1rem; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap; text-transform: uppercase;
+}
+
+.btn:hover { background: var(--cyan); }
+.btn:active { transform: scale(0.97); }
+.btn.amber { background: var(--amber); }
+.btn.amber:hover { background: #ffd060; }
+.btn.green { background: var(--green); color: #000; }
+
+.btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-left: auto; }
+
+/* ─── PIPELINE ────────────────────────────── */
+.pipeline-wrap {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+
+.pipeline-title {
+  padding: 0.9rem 1.4rem; font-size: 0.65rem;
+  letter-spacing: 0.15em; color: var(--dim);
+  text-transform: uppercase; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+
+.pipeline-title::before {
+  content: ''; display: block; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--blue);
+  box-shadow: 0 0 6px var(--blue);
+}
+
+.pipeline-track {
+  padding: 1.5rem 1.4rem;
+  display: flex; align-items: center;
+  gap: 0; overflow-x: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+
+.pipe-node {
+  display: flex; flex-direction: column; align-items: center;
+  cursor: pointer; transition: transform 0.2s;
+  min-width: 88px;
+}
+
+.pipe-node:hover { transform: translateY(-2px); }
+
+.pipe-icon {
+  width: 48px; height: 48px; border-radius: 10px;
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; transition: border-color 0.2s, box-shadow 0.2s;
+  background: var(--bg3); position: relative;
+}
+
+.pipe-node.active .pipe-icon {
+  border-color: var(--amber);
+  box-shadow: 0 0 16px rgba(255,184,48,0.3);
+}
+
+.pipe-node.done .pipe-icon {
+  border-color: var(--green);
+  box-shadow: 0 0 8px rgba(57,232,158,0.2);
+}
+
+.pipe-node.compress .pipe-icon { border-color: var(--blue2); }
+.pipe-node.decompress .pipe-icon { border-color: #4a2080; }
+.pipe-node.compress.active .pipe-icon { border-color: var(--blue); box-shadow: 0 0 16px rgba(59,158,255,0.4); }
+.pipe-node.decompress.active .pipe-icon { border-color: var(--purple); box-shadow: 0 0 16px rgba(169,123,255,0.4); }
+
+.pipe-label {
+  font-size: 0.58rem; letter-spacing: 0.05em;
+  color: var(--dim); margin-top: 0.5rem;
+  text-align: center; line-height: 1.3;
+  max-width: 80px;
+}
+
+.pipe-node.active .pipe-label { color: var(--amber); }
+.pipe-node.done .pipe-label { color: var(--green); }
+
+.pipe-arrow {
+  color: var(--dimmer); font-size: 1rem;
+  flex-shrink: 0; padding: 0 0.1rem;
+  margin-bottom: 1.4rem;
+}
+
+.pipe-divider {
+  width: 1px; height: 40px; background: var(--border);
+  flex-shrink: 0; margin: 0 0.6rem;
+  margin-bottom: 1.4rem;
+  position: relative;
+}
+
+.pipe-divider::before {
+  content: 'STORE'; position: absolute;
+  top: -16px; left: 50%; transform: translateX(-50%);
+  font-size: 0.5rem; letter-spacing: 0.1em;
+  color: var(--amber); white-space: nowrap;
+}
+
+/* ─── STAGE PANEL ─────────────────────────── */
+.stage-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 720px) {
+  .stage-panel { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+
+.panel-header {
+  padding: 0.8rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0.6rem;
+}
+
+.panel-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; flex-shrink: 0;
+}
+
+.panel-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem; font-weight: 700;
+  color: var(--text);
+}
+
+.panel-sub {
+  font-size: 0.6rem; color: var(--dim);
+  letter-spacing: 0.08em; margin-left: auto;
+}
+
+canvas.panel-canvas {
+  display: block; width: 100%; height: 180px;
+}
+
+.panel-footer {
+  padding: 0.7rem 1.2rem; border-top: 1px solid var(--border);
+  display: flex; gap: 1.5rem; flex-wrap: wrap;
+}
+
+.stat {
+  display: flex; flex-direction: column; gap: 0.15rem;
+}
+
+.stat-val {
+  font-size: 0.9rem; color: var(--amber); line-height: 1;
+}
+
+.stat-key {
+  font-size: 0.55rem; letter-spacing: 0.1em;
+  color: var(--dimmer); text-transform: uppercase;
+}
+
+/* ─── EXPLANATION BOX ─────────────────────── */
+.explain-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.4rem 1.6rem;
+  position: relative; overflow: hidden;
+  min-height: 120px;
+}
+
+.explain-box::before {
+  content: ''; position: absolute;
+  left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--amber);
+  transition: background 0.3s;
+}
+
+.explain-box.blue::before { background: var(--blue); }
+.explain-box.green::before { background: var(--green); }
+.explain-box.purple::before { background: var(--purple); }
+
+.explain-step {
+  font-size: 0.6rem; letter-spacing: 0.15em;
+  color: var(--amber); text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.explain-text {
+  font-size: 0.82rem; color: var(--text);
+  line-height: 1.7;
+}
+
+.explain-text code {
+  background: var(--bg4); color: var(--cyan);
+  padding: 0.1em 0.35em; border-radius: 3px;
+  font-size: 0.78rem;
+}
+
+.explain-text strong { color: var(--amber); font-weight: 700; }
+.explain-text em { color: var(--green); font-style: normal; }
+
+/* ─── CODEBOOK VIZ ────────────────────────── */
+.codebook-panel {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+
+.codebook-canvas-wrap {
+  position: relative;
+}
+
+canvas#c-codebook {
+  display: block; width: 100%; height: 160px;
+}
+
+/* ─── COMPARISON TABLE ────────────────────── */
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--border);
+  border-radius: 8px; overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.compare-cell {
+  background: var(--bg3); padding: 0.7rem 0.8rem;
+  text-align: center;
+}
+
+.compare-cell.header {
+  background: var(--bg4);
+  font-size: 0.58rem; letter-spacing: 0.1em;
+  color: var(--dim); text-transform: uppercase;
+}
+
+.compare-cell .big { font-size: 1rem; color: var(--amber); }
+.compare-cell .small { font-size: 0.6rem; color: var(--dim); margin-top: 0.2rem; }
+
+.compare-cell.good .big { color: var(--green); }
+.compare-cell.bad .big { color: var(--red); }
+
+/* ─── FULL FLOW CANVAS ─────────────────────── */
+.full-flow {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+
+canvas#c-flow { display: block; width: 100%; }
+
+/* ─── STEP NAV ─────────────────────────────── */
+.step-nav {
+  display: flex; align-items: center; gap: 0.8rem;
+  padding: 0.8rem 1.4rem; border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.step-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dimmer); cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.step-dot.active { background: var(--amber); transform: scale(1.4); }
+.step-dot.done { background: var(--green); }
+
+.step-counter {
+  font-size: 0.65rem; color: var(--dim);
+  margin-left: auto;
+}
+
+/* ─── ANIMATIONS ─────────────────────────── */
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes flow { 0%{stroke-dashoffset:20} 100%{stroke-dashoffset:0} }
+
+.fade-in { animation: fadeIn 0.35s ease forwards; }
+
+/* ─── SCROLLBAR ─────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tag">Interactive Visualizer</div>
+  <h1>Polar<span>Quant</span></h1>
+  <p class="subtitle">Step through the full compress → store → decompress pipeline. Watch every vector transformation in real time.</p>
+</header>
+
+<div class="app">
+
+  <!-- CONTROLS -->
+  <div class="controls-bar">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Bits</span>
+      <input type="range" id="bits-slider" min="1" max="4" value="2" step="1">
+      <span class="val-badge" id="bits-display">2 bits · 4 levels</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Vector type</span>
+      <select id="vec-type">
+        <option value="outlier">With outliers</option>
+        <option value="gaussian">Pure Gaussian</option>
+        <option value="sparse">Sparse</option>
+        <option value="uniform">Uniform</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="btn amber" id="btn-new">↺ New Vector</button>
+      <button class="btn" id="btn-prev">← Prev</button>
+      <button class="btn" id="btn-next">Next →</button>
+      <button class="btn green" id="btn-play">▶ Auto Play</button>
+    </div>
+  </div>
+
+  <!-- PIPELINE TRACK -->
+  <div class="pipeline-wrap">
+    <div class="pipeline-title">Algorithm Pipeline — click any step to jump</div>
+    <div class="pipeline-track" id="pipeline-track">
+      <!-- Compress side -->
+      <div class="pipe-node compress" data-step="0" id="pn-0">
+        <div class="pipe-icon">📥</div>
+        <div class="pipe-label">Input<br>Vector</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node compress" data-step="1" id="pn-1">
+        <div class="pipe-icon">📏</div>
+        <div class="pipe-label">Extract<br>Norm</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node compress" data-step="2" id="pn-2">
+        <div class="pipe-icon">⬇️</div>
+        <div class="pipe-label">Normalize<br>to unit</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node compress" data-step="3" id="pn-3">
+        <div class="pipe-icon">🔄</div>
+        <div class="pipe-label">WHT<br>Rotate</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node compress" data-step="4" id="pn-4">
+        <div class="pipe-icon">🎯</div>
+        <div class="pipe-label">Quantize<br>to slots</div>
+      </div>
+      <!-- Divider / storage -->
+      <div class="pipe-divider"></div>
+      <!-- Decompress side -->
+      <div class="pipe-node decompress" data-step="5" id="pn-5">
+        <div class="pipe-icon">🔍</div>
+        <div class="pipe-label">Lookup<br>Centroids</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node decompress" data-step="6" id="pn-6">
+        <div class="pipe-icon">⬆️</div>
+        <div class="pipe-label">Norm<br>Correct</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node decompress" data-step="7" id="pn-7">
+        <div class="pipe-icon">↩️</div>
+        <div class="pipe-label">Inverse<br>WHT</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node decompress" data-step="8" id="pn-8">
+        <div class="pipe-icon">✖️</div>
+        <div class="pipe-label">Rescale<br>by Norm</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node decompress" data-step="9" id="pn-9">
+        <div class="pipe-icon">📤</div>
+        <div class="pipe-label">Output<br>x̂</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPLANATION BOX -->
+  <div class="explain-box" id="explain-box">
+    <div class="explain-step" id="explain-step">Step 0 — Input</div>
+    <div class="explain-text" id="explain-text">Press <strong>Next →</strong> to begin stepping through the PolarQuant algorithm. Watch every coordinate transformation live.</div>
+  </div>
+
+  <!-- MAIN STAGE PANEL -->
+  <div class="stage-panel">
+    <!-- Left: Current stage viz -->
+    <div class="panel" id="panel-current">
+      <div class="panel-header">
+        <div class="panel-icon" id="panel-icon" style="background:rgba(59,158,255,0.15)">📥</div>
+        <div class="panel-title" id="panel-title">Input Vector</div>
+        <div class="panel-sub" id="panel-sub">d = 32</div>
+      </div>
+      <canvas class="panel-canvas" id="c-current" height="180"></canvas>
+      <div class="panel-footer" id="panel-footer-current">
+        <div class="stat"><div class="stat-val" id="s-range">—</div><div class="stat-key">Range</div></div>
+        <div class="stat"><div class="stat-val" id="s-std">—</div><div class="stat-key">Std Dev</div></div>
+        <div class="stat"><div class="stat-val" id="s-maxmean">—</div><div class="stat-key">Max/Mean</div></div>
+        <div class="stat"><div class="stat-val" id="s-extra">—</div><div class="stat-key" id="s-extra-key">Norm</div></div>
+      </div>
+    </div>
+
+    <!-- Right: Codebook / distribution -->
+    <div class="panel" id="panel-right">
+      <div class="panel-header">
+        <div class="panel-icon" style="background:rgba(255,184,48,0.12)">📐</div>
+        <div class="panel-title" id="right-title">Optimal Codebook</div>
+        <div class="panel-sub" id="right-sub">N(0, 1/d)</div>
+      </div>
+      <canvas class="panel-canvas" id="c-codebook" height="180"></canvas>
+      <div class="panel-footer">
+        <div class="stat"><div class="stat-val" id="cb-levels">4</div><div class="stat-key">Levels</div></div>
+        <div class="stat"><div class="stat-val" id="cb-mse">—</div><div class="stat-key">Quant MSE</div></div>
+        <div class="stat"><div class="stat-val" id="cb-cosine">—</div><div class="stat-key">Cosine Sim</div></div>
+        <div class="stat"><div class="stat-val" id="cb-compression">—</div><div class="stat-key">Compression</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORAGE DISPLAY -->
+  <div class="panel" id="storage-panel" style="display:none">
+    <div class="panel-header">
+      <div class="panel-icon" style="background:rgba(169,123,255,0.12)">💾</div>
+      <div class="panel-title">What Gets Stored</div>
+      <div class="panel-sub">Compressed representation</div>
+    </div>
+    <div style="padding:1rem 1.2rem">
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start">
+        <div>
+          <div style="font-size:0.6rem;letter-spacing:0.1em;color:var(--dim);margin-bottom:0.4rem;text-transform:uppercase">Indices (integer per coord)</div>
+          <div id="indices-display" style="font-size:0.72rem;color:var(--purple);word-break:break-all;max-width:400px;line-height:1.8"></div>
+        </div>
+        <div style="min-width:140px">
+          <div style="font-size:0.6rem;letter-spacing:0.1em;color:var(--dim);margin-bottom:0.4rem;text-transform:uppercase">Norm (1 float)</div>
+          <div id="norm-display" style="font-size:1.1rem;color:var(--amber)"></div>
+          <div style="margin-top:1rem;font-size:0.6rem;letter-spacing:0.1em;color:var(--dim);text-transform:uppercase">Total Storage</div>
+          <div id="storage-display" style="font-size:0.85rem;color:var(--green);margin-top:0.2rem"></div>
+          <div id="saving-display" style="font-size:0.72rem;color:var(--dim);margin-top:0.2rem"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BEFORE / AFTER COMPARE -->
+  <div class="panel" id="compare-panel" style="display:none">
+    <div class="panel-header">
+      <div class="panel-icon" style="background:rgba(57,232,158,0.12)">⚖️</div>
+      <div class="panel-title">Original vs Reconstructed</div>
+      <div class="panel-sub" id="compare-sub">—</div>
+    </div>
+    <canvas id="c-compare" class="panel-canvas" style="height:200px"></canvas>
+    <div class="panel-footer">
+      <div class="stat"><div class="stat-val" id="cmp-mse">—</div><div class="stat-key">Final MSE</div></div>
+      <div class="stat"><div class="stat-val" id="cmp-cos">—</div><div class="stat-key">Cosine Similarity</div></div>
+      <div class="stat"><div class="stat-val" id="cmp-ratio">—</div><div class="stat-key">Compression</div></div>
+      <div class="stat"><div class="stat-val" id="cmp-bits">—</div><div class="stat-key">Bits/coord</div></div>
+    </div>
+  </div>
+
+  <!-- STEP DOTS -->
+  <div class="step-nav" id="step-nav">
+    <div class="step-counter" id="step-counter">Step 0 / 9</div>
+  </div>
+
+</div><!-- end .app -->
+
+<script>
+/* ═══════════════════════════════════════════
+   MATH UTILITIES
+═══════════════════════════════════════════ */
+const TAU = Math.PI * 2;
+
+function seededRand(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = Math.imul(1664525, s) + 1013904223 >>> 0;
+    return s / 0x100000000;
+  };
+}
+
+function gaussRand(r) {
+  let u, v;
+  do { u = r(); } while (u === 0);
+  do { v = r(); } while (v === 0);
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
+}
+
+function norm(v) { return Math.sqrt(v.reduce((s,x)=>s+x*x,0)); }
+function dot(a,b)  { return a.reduce((s,x,i)=>s+x*b[i],0); }
+function scale(v,s){ return v.map(x=>x*s); }
+function add(a,b)  { return a.map((x,i)=>x+b[i]); }
+function sub(a,b)  { return a.map((x,i)=>x-b[i]); }
+function meanAbsArr(v){ return v.reduce((s,x)=>s+Math.abs(x),0)/v.length; }
+function stdArr(v){ const m=v.reduce((s,x)=>s+x,0)/v.length; return Math.sqrt(v.reduce((s,x)=>s+(x-m)**2,0)/v.length); }
+function clamp(x,a,b){ return Math.max(a,Math.min(b,x)); }
+
+/* WHT — fast Walsh-Hadamard Transform */
+function wht(v) {
+  const n = v.length, out = v.slice();
+  for (let half = 1; half < n; half <<= 1) {
+    for (let i = 0; i < n; i += half*2) {
+      for (let j = 0; j < half; j++) {
+        const a = out[i+j], b = out[i+j+half];
+        out[i+j]      = a + b;
+        out[i+j+half] = a - b;
+      }
+    }
+  }
+  const sq = Math.sqrt(n);
+  return out.map(x=>x/sq);
+}
+
+/* Pad to next power of 2 */
+function padToPow2(v) {
+  let n = 1;
+  while (n < v.length) n <<= 1;
+  const out = new Array(n).fill(0);
+  v.forEach((x,i)=>out[i]=x);
+  return out;
+}
+
+/* Random sign flip */
+function makeSign(n, rng) {
+  return Array.from({length:n},()=>rng()>0.5?1:-1);
+}
+
+/* Apply full rotation: signs1 · WHT · signs2 */
+function rotate(v, signs1, signs2) {
+  const padded = padToPow2(v);
+  const n = padded.length;
+  const s1 = signs1.slice(0,n);
+  const flipped = padded.map((x,i)=>x*s1[i]);
+  const transformed = wht(flipped);
+  const s2 = signs2.slice(0,n);
+  return transformed.slice(0,v.length).map((x,i)=>x*s2[i]);
+}
+
+function inverseRotate(v, signs1, signs2, origLen) {
+  const padded = padToPow2(new Array(origLen).fill(0));
+  const n = padded.length;
+  const s2 = signs2.slice(0,n);
+  const full = new Array(n).fill(0);
+  v.forEach((x,i)=>full[i]=x*s2[i]);
+  const iw = wht(full); // WHT is self-inverse up to scaling
+  const s1 = signs1.slice(0,n);
+  return iw.slice(0,origLen).map((x,i)=>x*s1[i]);
+}
+
+/* Precomputed optimal centroids (in units of sigma = 1/√d, scaled) */
+const CENTROIDS_SIGMA = {
+  1: [-0.7979, 0.7979],
+  2: [-1.5104, -0.4528, 0.4528, 1.5104],
+  3: [-2.1518,-1.3439,-0.7560,-0.2451, 0.2451, 0.7560, 1.3439, 2.1518],
+  4: [-2.4008,-1.8435,-1.4371,-1.0993,-0.7993,-0.5224,-0.2582, 0.0000,
+       0.2582, 0.5224, 0.7993, 1.0993, 1.4371, 1.8435, 2.4008, 2.4008]
+};
+
+function getOptimalCentroids(bits, d) {
+  const sigma = 1/Math.sqrt(d);
+  const raw = CENTROIDS_SIGMA[bits];
+  // 4-bit: fix the duplicate, use 16 values
+  if (bits === 4) {
+    const c16 = [-2.4008,-1.8435,-1.4371,-1.0993,-0.7993,-0.5224,-0.2582,-0.0838,
+                  0.0838, 0.2582, 0.5224, 0.7993, 1.0993, 1.4371, 1.8435, 2.4008];
+    return c16.map(x=>x*sigma);
+  }
+  return raw.map(x=>x*sigma);
+}
+
+function quantizeVec(v, centroids) {
+  return v.map(x => {
+    let bestIdx=0, bestDist=Infinity;
+    centroids.forEach((c,i)=>{ const d=Math.abs(x-c); if(d<bestDist){bestDist=d;bestIdx=i;} });
+    return bestIdx;
+  });
+}
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+const D = 32;
+let rngSeed = 42;
+let signs1, signs2;
+let currentStep = 0;
+let isPlaying = false;
+let playTimer = null;
+
+let state = {};
+
+function makeVector(type, rng) {
+  const v = Array.from({length:D},()=>gaussRand(rng)*0.5);
+  if (type==='outlier') {
+    [2,8,17,25,30].forEach(i=>v[i]=gaussRand(rng)*3.5);
+  } else if (type==='sparse') {
+    const out = new Array(D).fill(0);
+    [0,5,15,28].forEach(i=>out[i]=gaussRand(rng)*2);
+    return out;
+  } else if (type==='uniform') {
+    return Array.from({length:D},()=>(rng()-0.5)*4);
+  }
+  return v;
+}
+
+function resetState() {
+  const rng = seededRand(rngSeed);
+  const signRng = seededRand(rngSeed+100);
+  signs1 = makeSign(64, signRng);
+  signs2 = makeSign(64, seededRand(rngSeed+200));
+
+  const vecType = $('vec-type').value;
+  const x = makeVector(vecType, rng);
+  const bits = parseInt($('bits-slider').value);
+  const centroids = getOptimalCentroids(bits, D);
+
+  // Run full pipeline
+  const xNorm  = norm(x);
+  const xUnit  = scale(x, 1/xNorm);
+  const y      = rotate(xUnit, signs1, signs2);
+  const idxs   = quantizeVec(y, centroids);
+  const yHat   = idxs.map(i=>centroids[i]);
+  const yHatN  = norm(yHat);
+  const yHatCorr = yHatN > 0 ? scale(yHat, 1/yHatN) : yHat;
+  const xHatUnit = inverseRotate(yHatCorr, signs1, signs2, D);
+  const xHat   = scale(xHatUnit, xNorm);
+
+  const mse    = x.reduce((s,v,i)=>s+(v-xHat[i])**2,0)/D;
+  const cosine = dot(x,xHat)/(norm(x)*norm(xHat));
+
+  state = { x, xNorm, xUnit, y, idxs, yHat, yHatCorr, xHatUnit, xHat,
+            bits, centroids, mse, cosine };
+}
+
+/* ═══════════════════════════════════════════
+   CANVAS DRAWING HELPERS
+═══════════════════════════════════════════ */
+const COLORS = {
+  blue:'#3b9eff', amber:'#ffb830', green:'#39e89e',
+  red:'#ff5c5c', purple:'#a97bff', cyan:'#00d4ff', dim:'#2a3d54'
+};
+
+function setupCanvas(id, h) {
+  const cv = document.getElementById(id);
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.offsetWidth * dpr;
+  const H = (h || cv.offsetHeight || 180) * dpr;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { ctx, W: cv.offsetWidth, H: h || (cv.offsetHeight || 180) };
+}
+
+function drawBars(ctx, W, H, values, opts={}) {
+  const { color='#3b9eff', highlightIdxs=[], highlightColor='#ff5c5c',
+          showZero=true, normLine=null, centroids=null } = opts;
+  const n = values.length;
+  const pad = { l:6, r:6, t:12, b:12 };
+  const pw = W-pad.l-pad.r, ph = H-pad.t-pad.b;
+  const maxAbs = Math.max(...values.map(Math.abs), 0.001);
+  const midY = pad.t + ph/2;
+  const bw = pw/n;
+
+  if (showZero) {
+    ctx.beginPath(); ctx.moveTo(pad.l, midY); ctx.lineTo(pad.l+pw, midY);
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1; ctx.stroke();
+  }
+
+  // centroid horizontal lines
+  if (centroids) {
+    centroids.forEach(c => {
+      const cy = midY - (c/maxAbs)*(ph/2);
+      ctx.beginPath(); ctx.moveTo(pad.l, cy); ctx.lineTo(pad.l+pw, cy);
+      ctx.strokeStyle='rgba(255,184,48,0.25)'; ctx.lineWidth=1;
+      ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+    });
+  }
+
+  values.forEach((v,i) => {
+    const bh = Math.abs(v)/maxAbs * (ph/2);
+    const bx = pad.l + i*bw;
+    const by = v>=0 ? midY-bh : midY;
+    const isHL = highlightIdxs.includes(i);
+    ctx.fillStyle = isHL ? highlightColor : color;
+    ctx.globalAlpha = isHL ? 0.95 : 0.72;
+    ctx.fillRect(bx+0.5, by, bw-1, bh);
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawBell(ctx, W, H, sigma, centroids, activeIdxs=[]) {
+  const pad = {l:20,r:20,t:16,b:20};
+  const pw = W-pad.l-pad.r, ph = H-pad.t-pad.b;
+  const xRange = 4*sigma;
+  const toScreenX = x => pad.l + (x+xRange)/(2*xRange)*pw;
+  const yMax = 1/(sigma*Math.sqrt(TAU));
+  const toScreenY = y => pad.t + (1-y/yMax)*ph;
+
+  // Fill under curve
+  ctx.beginPath();
+  for(let px=0;px<=pw;px++){
+    const xv = -xRange+(px/pw)*2*xRange;
+    const yv = Math.exp(-xv*xv/(2*sigma*sigma))/(sigma*Math.sqrt(TAU));
+    const sy = toScreenY(yv);
+    px===0 ? ctx.moveTo(pad.l+px,sy) : ctx.lineTo(pad.l+px,sy);
+  }
+  ctx.lineTo(pad.l+pw, pad.t+ph);
+  ctx.lineTo(pad.l, pad.t+ph);
+  ctx.closePath();
+  ctx.fillStyle='rgba(59,158,255,0.12)';
+  ctx.fill();
+
+  // Curve line
+  ctx.beginPath();
+  for(let px=0;px<=pw;px++){
+    const xv = -xRange+(px/pw)*2*xRange;
+    const yv = Math.exp(-xv*xv/(2*sigma*sigma))/(sigma*Math.sqrt(TAU));
+    const sy = toScreenY(yv);
+    px===0 ? ctx.moveTo(pad.l+px,sy) : ctx.lineTo(pad.l+px,sy);
+  }
+  ctx.strokeStyle='rgba(59,158,255,0.5)';
+  ctx.lineWidth=1.5; ctx.stroke();
+
+  // Centroid lines
+  centroids.forEach((c,i) => {
+    const sx = toScreenX(c);
+    const isActive = activeIdxs.includes(i);
+    ctx.beginPath(); ctx.moveTo(sx,pad.t); ctx.lineTo(sx,pad.t+ph);
+    ctx.strokeStyle = isActive ? '#ffb830' : 'rgba(255,184,48,0.4)';
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.stroke();
+    // Dot
+    const yv = Math.exp(-c*c/(2*sigma*sigma))/(sigma*Math.sqrt(TAU));
+    ctx.beginPath(); ctx.arc(sx, toScreenY(yv), isActive?5:3, 0, TAU);
+    ctx.fillStyle = isActive ? '#ffb830' : 'rgba(255,184,48,0.5)';
+    ctx.fill();
+    // Label
+    ctx.font=`10px Space Mono`;
+    ctx.fillStyle = isActive ? '#ffb830' : 'rgba(255,184,48,0.5)';
+    ctx.textAlign='center';
+    ctx.fillText(`c${i}`, sx, pad.t+ph+14);
+  });
+
+  // Sigma label
+  ctx.font='9px Space Mono';
+  ctx.fillStyle='rgba(90,122,154,0.8)';
+  ctx.textAlign='right';
+  ctx.fillText(`σ = ${sigma.toFixed(4)}`, W-pad.r, pad.t+12);
+}
+
+/* ═══════════════════════════════════════════
+   STEP DEFINITIONS
+═══════════════════════════════════════════ */
+const STEPS = [
+  {
+    id:0, icon:'📥', title:'Input Vector', sub:`d = ${D}`,
+    pipelineClass:'compress',
+    explainClass:'',
+    explain: `This is our raw KV-cache vector with <strong>${D} coordinates</strong>. Some coordinates are huge (outliers), most are near zero. The <strong>red bars</strong> are the outlier channels. If we quantize this directly, the outliers stretch the scale and all the normal coordinates get smashed into a few slots.`,
+    draw(ctx,W,H) {
+      const {x} = state;
+      const outliers = x.map((v,i)=>[Math.abs(v),i]).sort((a,b)=>b[0]-a[0]).slice(0,5).map(a=>a[1]);
+      ctx.clearRect(0,0,W,H);
+      drawBars(ctx,W,H,x,{color:'#3b9eff',highlightIdxs:outliers,highlightColor:'#ff5c5c'});
+    },
+    stats() {
+      const {x} = state;
+      const absX = x.map(Math.abs);
+      const mn = Math.min(...x), mx = Math.max(...x);
+      return {range:`${(mx-mn).toFixed(3)}`, std:stdArr(x).toFixed(4),
+              maxmean:(Math.max(...absX)/meanAbsArr(x)).toFixed(1)+'×', extra:norm(x).toFixed(4)};
+    },
+    rightDraw(ctx,W,H) { drawCodebook(ctx,W,H); }
+  },
+  {
+    id:1, icon:'📏', title:'Extract Norm', sub:'Save ‖x‖',
+    explainClass:'',
+    explain: `Before anything else, measure the <strong>length</strong> of the vector — this is the norm <code>‖x‖ = √(Σ xᵢ²)</code>. We'll store this single number separately. It's like measuring how tall the water is before pouring it into a differently-shaped container. The norm is our "<strong>overall scale</strong>" that we must preserve.`,
+    draw(ctx,W,H) {
+      const {x,xNorm} = state;
+      ctx.clearRect(0,0,W,H);
+      drawBars(ctx,W,H,x,{color:'#3b9eff'});
+      // Draw norm indicator
+      ctx.font='bold 13px Syne,sans-serif';
+      ctx.fillStyle='#ffb830';
+      ctx.textAlign='center';
+      ctx.fillText(`‖x‖ = ${xNorm.toFixed(4)}`, W/2, 20);
+    },
+    stats() {
+      const {x,xNorm} = state;
+      return {range:`${(Math.max(...x)-Math.min(...x)).toFixed(3)}`,
+              std:stdArr(x).toFixed(4),
+              maxmean:'Saving norm',
+              extra:xNorm.toFixed(4)};
+    },
+    rightDraw(ctx,W,H){ drawNormViz(ctx,W,H); }
+  },
+  {
+    id:2, icon:'⬇️', title:'Normalize to Unit', sub:'‖x_unit‖ = 1',
+    explainClass:'blue',
+    explain: `Divide every coordinate by the norm: <code>x_unit = x / ‖x‖</code>. The vector now has length exactly 1 — it's a "unit vector". Think of pointing an arrow in the same direction but <strong>shrinking it to length 1</strong>. This is needed so the post-rotation distribution is exactly <code>N(0, 1/d)</code> — regardless of the original scale.`,
+    draw(ctx,W,H) {
+      const {xUnit} = state;
+      ctx.clearRect(0,0,W,H);
+      drawBars(ctx,W,H,xUnit,{color:'#00d4ff'});
+      ctx.font='12px Space Mono';
+      ctx.fillStyle='rgba(0,212,255,0.7)';
+      ctx.textAlign='center';
+      ctx.fillText(`‖x_unit‖ = ${norm(xUnit).toFixed(6)}`, W/2, 20);
+    },
+    stats() {
+      const {xUnit} = state;
+      const absX = xUnit.map(Math.abs);
+      return {range:`${(Math.max(...xUnit)-Math.min(...xUnit)).toFixed(4)}`,
+              std:stdArr(xUnit).toFixed(4),
+              maxmean:(Math.max(...absX)/meanAbsArr(xUnit)).toFixed(1)+'×',
+              extra:'1.0000'};
+    },
+    rightDraw(ctx,W,H){ drawCodebook(ctx,W,H); }
+  },
+  {
+    id:3, icon:'🔄', title:'WHT Rotate', sub:'signs · WHT · signs',
+    explainClass:'blue',
+    explain: `Apply random sign flip → Walsh-Hadamard Transform → random sign flip again. The outlier energy <strong>spreads evenly</strong> across all 32 coordinates. Max/Mean ratio collapses dramatically. All coordinates now follow <code>N(0, 1/d)</code> — a predictable bell curve. This is what makes optimal quantization possible.`,
+    draw(ctx,W,H) {
+      const {y} = state;
+      ctx.clearRect(0,0,W,H);
+      drawBars(ctx,W,H,y,{color:'#39e89e'});
+      ctx.font='11px Space Mono';
+      ctx.fillStyle='rgba(57,232,158,0.7)';
+      ctx.textAlign='center';
+      ctx.fillText(`std = ${stdArr(y).toFixed(4)}  (theory: ${(1/Math.sqrt(D)).toFixed(4)})`, W/2, 20);
+    },
+    stats() {
+      const {y} = state;
+      const absY = y.map(Math.abs);
+      return {range:`${(Math.max(...y)-Math.min(...y)).toFixed(4)}`,
+              std:stdArr(y).toFixed(4),
+              maxmean:(Math.max(...absY)/meanAbsArr(absY)).toFixed(1)+'×',
+              extra:(1/Math.sqrt(D)).toFixed(4)};
+    },
+    rightDraw(ctx,W,H) {
+      ctx.clearRect(0,0,W,H);
+      const sigma = 1/Math.sqrt(D);
+      drawBell(ctx,W,H,sigma,state.centroids,[]);
+      // Overlay actual histogram of y
+      const {y} = state;
+      const xRange = 4*sigma;
+      const bins = 20;
+      const counts = new Array(bins).fill(0);
+      y.forEach(v=>{
+        const bi = Math.floor((v+xRange)/(2*xRange)*bins);
+        if(bi>=0&&bi<bins) counts[bi]++;
+      });
+      const maxC = Math.max(...counts,1);
+      const pad={l:20,r:20,t:16,b:20};
+      const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+      const bw=pw/bins;
+      counts.forEach((c,i)=>{
+        const bh=(c/maxC)*ph*0.5;
+        ctx.fillStyle='rgba(57,232,158,0.35)';
+        ctx.fillRect(pad.l+i*bw, pad.t+ph-bh, bw-1, bh);
+      });
+    }
+  },
+  {
+    id:4, icon:'🎯', title:'Quantize to Slots', sub:'index = nearest centroid',
+    explainClass:'',
+    explain: `Each rotated coordinate gets <strong>rounded to the nearest centroid</strong> (optimal slot). Instead of storing the float, we store just the index — a tiny integer (0, 1, 2, or 3 for 2-bit). The orange dashed lines show where the centroids sit on the bell curve. Notice they're <strong>denser near zero</strong> where data actually lives.`,
+    draw(ctx,W,H) {
+      const {y, yHat, idxs, centroids} = state;
+      ctx.clearRect(0,0,W,H);
+      // Original rotated (dim)
+      drawBars(ctx,W,H,y,{color:'rgba(57,232,158,0.25)',centroids});
+      // Quantized (bright)
+      drawBars(ctx,W,H,yHat,{color:'#ffb830',showZero:false});
+    },
+    stats() {
+      const {y,yHat,idxs,bits} = state;
+      const mse = y.reduce((s,v,i)=>s+(v-yHat[i])**2,0)/D;
+      return {range:`${(1<<bits)} levels`,
+              std:stdArr(yHat).toFixed(4),
+              maxmean:`MSE ${mse.toFixed(5)}`,
+              extra:`${bits} bits`};
+    },
+    rightDraw(ctx,W,H) {
+      ctx.clearRect(0,0,W,H);
+      const sigma = 1/Math.sqrt(D);
+      // Highlight which centroid most data is in
+      drawBell(ctx,W,H,sigma,state.centroids,[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
+    }
+  },
+  {
+    id:5, icon:'🔍', title:'Lookup Centroids', sub:'indices → float values',
+    explainClass:'purple',
+    explain: `<strong>Start of decompression.</strong> We only stored the indices (tiny integers). Now look up the actual float value for each index from the codebook table. Index 0 → centroid[0], index 1 → centroid[1], etc. This is just a table lookup — extremely fast. We get back approximate float values for each coordinate.`,
+    draw(ctx,W,H) {
+      const {yHat} = state;
+      ctx.clearRect(0,0,W,H);
+      drawBars(ctx,W,H,yHat,{color:'#a97bff'});
+      ctx.font='11px Space Mono'; ctx.fillStyle='rgba(169,123,255,0.7)';
+      ctx.textAlign='center';
+      ctx.fillText('Centroid values restored from index table', W/2, 20);
+    },
+    stats() {
+      const {yHat,centroids} = state;
+      const uniq = [...new Set(yHat.map(v=>v.toFixed(5)))].length;
+      return {range:`${uniq} distinct values`,
+              std:stdArr(yHat).toFixed(5),
+              maxmean:`${centroids.length} centroids`,
+              extra:norm(yHat).toFixed(4)};
+    },
+    rightDraw(ctx,W,H){ drawCodebook(ctx,W,H); }
+  },
+  {
+    id:6, icon:'⬆️', title:'Norm Correction', sub:'rescale to unit norm',
+    explainClass:'purple',
+    explain: `After quantization, the reconstructed vector's length is <strong>slightly off</strong> from 1 due to rounding errors. We renormalize it back to unit length: <code>ŷ_corrected = ŷ / ‖ŷ‖</code>. This step ensures the inverse rotation works with a clean unit vector — otherwise the length error compounds through all subsequent steps.`,
+    draw(ctx,W,H) {
+      const {yHat, yHatCorr} = state;
+      ctx.clearRect(0,0,W,H);
+      drawBars(ctx,W,H,yHat,{color:'rgba(169,123,255,0.3)'});
+      drawBars(ctx,W,H,yHatCorr,{color:'#a97bff',showZero:false});
+      ctx.font='11px Space Mono'; ctx.fillStyle='rgba(169,123,255,0.7)';
+      ctx.textAlign='center';
+      ctx.fillText(`‖ŷ‖ before: ${norm(yHat).toFixed(4)} → after: ${norm(yHatCorr).toFixed(4)}`, W/2, 20);
+    },
+    stats() {
+      const {yHat,yHatCorr} = state;
+      return {range:`Before: ${norm(yHat).toFixed(4)}`,
+              std:`After: ${norm(yHatCorr).toFixed(6)}`,
+              maxmean:'Corrected',
+              extra:'1.0000'};
+    },
+    rightDraw(ctx,W,H){ drawCodebook(ctx,W,H); }
+  },
+  {
+    id:7, icon:'↩️', title:'Inverse WHT', sub:'undo the rotation',
+    explainClass:'purple',
+    explain: `Apply the <strong>inverse rotation</strong>: undo the second sign flip, apply WHT again (WHT is self-inverse), undo the first sign flip. The coordinates return to the original space — but now they look like a normalized version of the input. The outliers reappear in their original channels because rotation is perfectly reversible.`,
+    draw(ctx,W,H) {
+      const {xHatUnit} = state;
+      ctx.clearRect(0,0,W,H);
+      drawBars(ctx,W,H,xHatUnit,{color:'#a97bff'});
+      ctx.font='11px Space Mono'; ctx.fillStyle='rgba(169,123,255,0.7)';
+      ctx.textAlign='center';
+      ctx.fillText(`Unit-norm reconstructed: ‖x̂_unit‖ = ${norm(xHatUnit).toFixed(4)}`, W/2, 20);
+    },
+    stats() {
+      const {xHatUnit,xUnit} = state;
+      const cos = dot(xUnit,xHatUnit)/(norm(xUnit)*norm(xHatUnit));
+      return {range:`‖x̂_unit‖ = ${norm(xHatUnit).toFixed(4)}`,
+              std:stdArr(xHatUnit).toFixed(4),
+              maxmean:`cos = ${cos.toFixed(4)}`,
+              extra:'Unit norm'};
+    },
+    rightDraw(ctx,W,H){ drawCodebook(ctx,W,H); }
+  },
+  {
+    id:8, icon:'✖️', title:'Rescale by Norm', sub:'x̂ = x̂_unit × ‖x‖',
+    explainClass:'green',
+    explain: `Multiply every coordinate by the saved norm: <code>x̂ = x̂_unit × ‖x‖</code>. This restores the original scale. The vector now lives in the same space as the input. We've gone from 128 floats (or 2048 bits) down to <strong>${D} × bits + 32 bits</strong> — a ${(D*16/(D*parseInt($('bits-slider').value||2)+32)).toFixed(1)}× compression.`,
+    draw(ctx,W,H) {
+      const {xHat} = state;
+      ctx.clearRect(0,0,W,H);
+      const outliers = state.x.map((v,i)=>[Math.abs(v),i]).sort((a,b)=>b[0]-a[0]).slice(0,5).map(a=>a[1]);
+      drawBars(ctx,W,H,xHat,{color:'#39e89e',highlightIdxs:outliers,highlightColor:'#a97bff'});
+      ctx.font='11px Space Mono'; ctx.fillStyle='rgba(57,232,158,0.7)';
+      ctx.textAlign='center';
+      ctx.fillText(`‖x̂‖ = ${norm(xHat).toFixed(4)}  (original: ${state.xNorm.toFixed(4)})`, W/2, 20);
+    },
+    stats() {
+      const {xHat,xNorm} = state;
+      return {range:`${(Math.max(...xHat)-Math.min(...xHat)).toFixed(3)}`,
+              std:stdArr(xHat).toFixed(4),
+              maxmean:`‖x̂‖ = ${norm(xHat).toFixed(4)}`,
+              extra:xNorm.toFixed(4)};
+    },
+    rightDraw(ctx,W,H){ drawCodebook(ctx,W,H); }
+  },
+  {
+    id:9, icon:'📤', title:'Output x̂', sub:'Reconstruction complete',
+    explainClass:'green',
+    explain: `Done! The <strong>blue bars</strong> are the original vector, <strong>green bars</strong> are the reconstructed x̂. They're not identical (we lost some information in step 4), but the <em>direction is well-preserved</em> — cosine similarity measures this. At 2 bits we get ~0.94 cosine similarity with 7× compression. At 4 bits: ~0.995 cosine with 3.8× compression.`,
+    draw(ctx,W,H) {
+      const {x,xHat} = state;
+      ctx.clearRect(0,0,W,H);
+      drawBars(ctx,W,H,x,{color:'rgba(59,158,255,0.4)'});
+      drawBars(ctx,W,H,xHat,{color:'#39e89e',showZero:false});
+    },
+    stats() {
+      const {x,xHat,mse,cosine} = state;
+      return {range:`MSE: ${mse.toFixed(5)}`,
+              std:`cos: ${cosine.toFixed(4)}`,
+              maxmean:`${state.bits} bit`,
+              extra:`${(D*16/(D*state.bits+32)).toFixed(1)}×`};
+    },
+    rightDraw(ctx,W,H){ drawCompare(ctx,W,H); }
+  }
+];
+
+function drawCodebook(ctx,W,H) {
+  ctx.clearRect(0,0,W,H);
+  const sigma = 1/Math.sqrt(D);
+  drawBell(ctx,W,H,sigma,state.centroids,[]);
+}
+
+function drawNormViz(ctx,W,H) {
+  ctx.clearRect(0,0,W,H);
+  const {x,xNorm} = state;
+  const cx=W/2, cy=H/2;
+  const maxR = Math.min(W,H)/2-20;
+  // Circle representing unit norm
+  ctx.beginPath(); ctx.arc(cx,cy,maxR,0,TAU);
+  ctx.strokeStyle='rgba(57,232,158,0.2)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='rgba(57,232,158,0.05)'; ctx.fill();
+  ctx.font='10px Space Mono'; ctx.fillStyle='rgba(57,232,158,0.5)';
+  ctx.textAlign='center'; ctx.fillText('unit sphere', cx, cy-maxR+16);
+
+  // Vector as arrow proportional to norm
+  const scaledR = Math.min(maxR*0.8, maxR*(xNorm/4));
+  const angle = -0.4;
+  const ex=cx+Math.cos(angle)*scaledR, ey=cy+Math.sin(angle)*scaledR;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ex,ey);
+  ctx.strokeStyle='#3b9eff'; ctx.lineWidth=2; ctx.stroke();
+  // Arrowhead
+  ctx.beginPath(); ctx.arc(ex,ey,4,0,TAU); ctx.fillStyle='#3b9eff'; ctx.fill();
+
+  // Unit version
+  const ux=cx+Math.cos(angle)*maxR*0.7, uy=cy+Math.sin(angle)*maxR*0.7;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ux,uy);
+  ctx.strokeStyle='#00d4ff'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(ux,uy,4,0,TAU); ctx.fillStyle='#00d4ff'; ctx.fill();
+
+  // Labels
+  ctx.font='10px Space Mono';
+  ctx.fillStyle='#3b9eff'; ctx.textAlign='left';
+  ctx.fillText(`x  ‖x‖=${xNorm.toFixed(2)}`, ex+8, ey+4);
+  ctx.fillStyle='#00d4ff';
+  ctx.fillText('x/‖x‖  ‖·‖=1', ux+8, uy-8);
+
+  // Norm bar
+  ctx.fillStyle='rgba(255,184,48,0.15)';
+  ctx.fillRect(12,H-28,W-24,14);
+  ctx.fillStyle='rgba(255,184,48,0.6)';
+  ctx.fillRect(12,H-28,Math.min((xNorm/5)*(W-24),W-24),14);
+  ctx.font='9px Space Mono'; ctx.fillStyle='#ffb830'; ctx.textAlign='center';
+  ctx.fillText(`norm = ${xNorm.toFixed(4)}`, W/2, H-17);
+}
+
+function drawCompare(ctx,W,H) {
+  ctx.clearRect(0,0,W,H);
+  const {x,xHat} = state;
+  drawBars(ctx,W,H,x,{color:'rgba(59,158,255,0.5)'});
+  drawBars(ctx,W,H,xHat,{color:'rgba(57,232,158,0.7)',showZero:false});
+  // Legend
+  ctx.font='10px Space Mono';
+  ctx.fillStyle='rgba(59,158,255,0.8)'; ctx.textAlign='left';
+  ctx.fillText('■ original', 10, 18);
+  ctx.fillStyle='rgba(57,232,158,0.8)';
+  ctx.fillText('■ reconstructed', 10, 32);
+}
+
+/* ═══════════════════════════════════════════
+   RENDER STEP
+═══════════════════════════════════════════ */
+const STEP_COLORS = { blue:'blue', purple:'purple', green:'green', '':'' };
+
+const stepExplainClass = ['','','blue','blue','','purple','purple','purple','green','green'];
+
+function render() {
+  const step = STEPS[currentStep];
+
+  // Pipeline nodes
+  STEPS.forEach(s => {
+    const el = $(`pn-${s.id}`);
+    el.classList.remove('active','done');
+    if(s.id===currentStep) el.classList.add('active');
+    else if(s.id<currentStep) el.classList.add('done');
+  });
+
+  // Step dots
+  document.querySelectorAll('.step-dot').forEach((d,i)=>{
+    d.classList.remove('active','done');
+    if(i===currentStep) d.classList.add('active');
+    else if(i<currentStep) d.classList.add('done');
+  });
+
+  // Counter
+  $('step-counter').textContent = `Step ${currentStep} / ${STEPS.length-1}`;
+
+  // Panel
+  $('panel-icon').textContent = step.icon;
+  $('panel-title').textContent = step.title;
+  $('panel-sub').textContent = step.sub;
+
+  // Draw current canvas
+  const {ctx:ctx1, W:W1, H:H1} = setupCanvas('c-current',180);
+  step.draw(ctx1,W1,H1);
+
+  // Stats
+  const stats = step.stats();
+  $('s-range').textContent = stats.range;
+  $('s-std').textContent   = stats.std;
+  $('s-maxmean').textContent = stats.maxmean;
+  $('s-extra').textContent = stats.extra;
+
+  // Right panel
+  const {ctx:ctx2, W:W2, H:H2} = setupCanvas('c-codebook',180);
+  step.rightDraw(ctx2,W2,H2);
+
+  // Right panel title
+  $('right-title').textContent = currentStep>=5 ? 'Reconstruction' : 'Optimal Codebook';
+  $('right-sub').textContent   = currentStep>=5 ? 'N(0,1/d) bell' : `N(0, 1/${D})`;
+
+  // Codebook stats
+  const {bits,centroids,mse,cosine} = state;
+  $('cb-levels').textContent     = 1<<bits;
+  $('cb-mse').textContent        = currentStep>=9 ? mse.toFixed(5) : '—';
+  $('cb-cosine').textContent     = currentStep>=9 ? cosine.toFixed(4) : '—';
+  $('cb-compression').textContent= `${(D*16/(D*bits+32)).toFixed(1)}×`;
+
+  // Explain
+  const eb = $('explain-box');
+  eb.className = 'explain-box fade-in ' + (stepExplainClass[currentStep]||'');
+  $('explain-step').textContent = `Step ${currentStep} — ${step.title}`;
+  $('explain-text').innerHTML = step.explain;
+
+  // Storage panel (step 4+)
+  const storagePanel = $('storage-panel');
+  if(currentStep>=4) {
+    storagePanel.style.display='';
+    const {idxs,xNorm,bits} = state;
+    // Show indices (abbreviated)
+    const shown = idxs.slice(0,24);
+    $('indices-display').innerHTML = shown.map(i=>`<span style="color:var(--purple);background:rgba(169,123,255,0.1);border:1px solid rgba(169,123,255,0.2);padding:1px 5px;border-radius:3px;margin:1px;display:inline-block">${i}</span>`).join('') + (idxs.length>24?`<span style="color:var(--dim)"> …+${idxs.length-24} more</span>`:'');
+    $('norm-display').textContent = xNorm.toFixed(6);
+    const totalBits = D*bits+32;
+    $('storage-display').textContent = `${totalBits} bits (${(totalBits/8).toFixed(0)} bytes)`;
+    $('saving-display').textContent  = `vs ${D*16} bits original · ${(D*16/totalBits).toFixed(1)}× smaller`;
+  } else {
+    storagePanel.style.display='none';
+  }
+
+  // Compare panel (step 9)
+  const comparePanel = $('compare-panel');
+  if(currentStep>=9) {
+    comparePanel.style.display='';
+    const {ctx:c3,W:W3} = setupCanvas('c-compare',200);
+    drawCompare(c3,W3,200);
+    $('cmp-mse').textContent   = mse.toFixed(5);
+    $('cmp-cos').textContent   = cosine.toFixed(4);
+    $('cmp-ratio').textContent = `${(D*16/(D*bits+32)).toFixed(1)}×`;
+    $('cmp-bits').textContent  = `${bits} bit`;
+    $('compare-sub').textContent = cosine>0.97?'Excellent ✓':cosine>0.9?'Good ✓':'Fair';
+    $('compare-sub').style.color = cosine>0.97?'var(--green)':cosine>0.9?'var(--amber)':'var(--red)';
+  } else {
+    comparePanel.style.display='none';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   CONTROLS
+═══════════════════════════════════════════ */
+function $(...args) {
+  if(args.length===1) return document.getElementById(args[0]);
+}
+
+function buildDots() {
+  const nav = $('step-nav');
+  nav.innerHTML='';
+  STEPS.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='step-dot'+(i===currentStep?' active':'');
+    d.title=STEPS[i].title;
+    d.onclick=()=>{ currentStep=i; render(); };
+    nav.appendChild(d);
+  });
+  const counter=document.createElement('div');
+  counter.id='step-counter'; counter.className='step-counter';
+  counter.textContent=`Step ${currentStep} / ${STEPS.length-1}`;
+  nav.appendChild(counter);
+}
+
+function buildPipelineClicks() {
+  STEPS.forEach(s=>{
+    const el = document.querySelector(`[data-step="${s.id}"]`);
+    if(el) el.addEventListener('click',()=>{ currentStep=s.id; render(); buildDots(); });
+  });
+}
+
+$('btn-next').onclick = () => {
+  if(currentStep<STEPS.length-1){ currentStep++; render(); buildDots(); }
+};
+$('btn-prev').onclick = () => {
+  if(currentStep>0){ currentStep--; render(); buildDots(); }
+};
+$('btn-new').onclick = () => {
+  rngSeed = (rngSeed + 17) % 9999;
+  resetState(); render(); buildDots();
+};
+
+$('bits-slider').oninput = () => {
+  const bits = parseInt($('bits-slider').value);
+  const levels = 1<<bits;
+  $('bits-display').textContent = `${bits} bit${bits>1?'s':''} · ${levels} levels`;
+  resetState(); render(); buildDots();
+};
+
+$('vec-type').onchange = () => { resetState(); render(); buildDots(); };
+
+$('btn-play').onclick = () => {
+  if(isPlaying) {
+    clearInterval(playTimer);
+    isPlaying=false;
+    $('btn-play').textContent='▶ Auto Play';
+    $('btn-play').className='btn green';
+  } else {
+    isPlaying=true;
+    $('btn-play').textContent='⏸ Pause';
+    $('btn-play').className='btn amber';
+    if(currentStep>=STEPS.length-1) { currentStep=0; }
+    playTimer=setInterval(()=>{
+      if(currentStep<STEPS.length-1){ currentStep++; render(); buildDots(); }
+      else {
+        clearInterval(playTimer); isPlaying=false;
+        $('btn-play').textContent='▶ Auto Play';
+        $('btn-play').className='btn green';
+      }
+    },2000);
+  }
+};
+
+// Keyboard
+window.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); if(currentStep<STEPS.length-1){currentStep++;render();buildDots();} }
+  if(e.key==='ArrowLeft') { if(currentStep>0){currentStep--;render();buildDots();} }
+});
+
+// Resize
+window.addEventListener('resize',()=>render());
+
+/* ─── INIT ─── */
+resetState();
+buildDots();
+buildPipelineClicks();
+render();
+</script>
+</body>
+</html>

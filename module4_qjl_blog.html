@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The QJL Lesson — Why More Centroids Beat Error Correction</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0a0805;
+  --bg2:     #0f0d0a;
+  --bg3:     #181410;
+  --bg4:     #201c17;
+  --amber:   #e8a020;
+  --amber2:  #f5c842;
+  --red:     #e05050;
+  --green:   #4ecb8a;
+  --blue:    #4a9ef0;
+  --purple:  #b07aff;
+  --text:    #ede0cc;
+  --dim:     #7a6a54;
+  --dimmer:  #3a3020;
+  --border:  #2a2218;
+  --glow:    rgba(232,160,32,0.15);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 19px;
+  line-height: 1.9;
+  overflow-x: hidden;
+}
+
+/* grain */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 999; opacity: 0.5;
+}
+
+/* progress */
+#prog {
+  position: fixed; top: 0; left: 0; height: 2px;
+  background: linear-gradient(90deg, var(--amber), var(--amber2));
+  z-index: 998; width: 0; box-shadow: 0 0 8px var(--amber);
+}
+
+/* HEADER */
+header {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  text-align: center; padding: 4rem 2rem;
+  position: relative; overflow: hidden;
+}
+
+#hero-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+
+.hero-eyebrow {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.7rem; letter-spacing: 0.25em;
+  color: var(--amber); text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  opacity: 0; animation: rise 0.8s 0.4s forwards;
+  position: relative;
+}
+
+h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2rem, 6vw, 4rem);
+  font-weight: 700; line-height: 1.15;
+  max-width: 850px; margin-bottom: 1.2rem;
+  color: var(--text);
+  opacity: 0; animation: rise 0.8s 0.6s forwards;
+  position: relative;
+}
+
+h1 .accent { color: var(--amber); }
+
+.hero-sub {
+  font-size: 1.1rem; color: var(--dim);
+  font-style: italic; max-width: 580px;
+  opacity: 0; animation: rise 0.8s 0.8s forwards;
+  position: relative;
+}
+
+.scroll-cue {
+  position: absolute; bottom: 3rem; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem; letter-spacing: 0.2em;
+  color: var(--dimmer); text-transform: uppercase;
+  opacity: 0; animation: rise 0.8s 1.4s forwards;
+}
+
+/* MAIN */
+main { max-width: 800px; margin: 0 auto; padding: 0 2rem 10rem; }
+
+/* SECTIONS */
+section {
+  margin-bottom: 9rem;
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.7s, transform 0.7s;
+}
+section.vis { opacity: 1; transform: none; }
+
+.sec-num {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem; letter-spacing: 0.2em;
+  color: var(--amber); text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+h2 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 600; line-height: 1.2;
+  margin-bottom: 1.4rem; color: var(--text);
+}
+h2 .accent { color: var(--amber); font-style: italic; }
+h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.15rem; margin: 2.5rem 0 1rem;
+  color: var(--amber);
+}
+
+p { margin-bottom: 1.3rem; }
+strong { color: var(--amber2); font-weight: 500; }
+em.r { color: var(--red); font-style: normal; }
+em.g { color: var(--green); font-style: normal; }
+em.b { color: var(--blue); font-style: normal; }
+
+code {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem; background: var(--bg3);
+  color: var(--green); padding: 0.1em 0.4em;
+  border-radius: 3px; border: 1px solid var(--border);
+}
+
+pre {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.4rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem; line-height: 1.75;
+  overflow-x: auto; margin: 1.5rem 0;
+  color: var(--text);
+}
+pre .c { color: var(--dim); }
+pre .k { color: var(--purple); }
+pre .g { color: var(--green); }
+pre .a { color: var(--amber); }
+
+.callout {
+  border-left: 3px solid var(--amber);
+  background: linear-gradient(to right, rgba(232,160,32,0.06), transparent);
+  padding: 1.1rem 1.5rem; margin: 2rem 0;
+  border-radius: 0 8px 8px 0;
+  font-style: italic; color: var(--dim);
+}
+.callout.red { border-color: var(--red); background: linear-gradient(to right, rgba(224,80,80,0.06), transparent); }
+.callout.green { border-color: var(--green); background: linear-gradient(to right, rgba(78,203,138,0.06), transparent); }
+
+.math {
+  text-align: center; padding: 1.2rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 1rem; color: var(--amber2);
+  background: var(--bg3); border-radius: 10px;
+  margin: 1.5rem 0; border: 1px solid var(--border);
+  letter-spacing: 0.05em;
+}
+
+/* VIZ WRAPPER */
+.viz {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden; margin: 2rem 0;
+}
+.viz-label {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.62rem; letter-spacing: 0.15em;
+  color: var(--dim); text-transform: uppercase;
+  padding: 0.9rem 1.2rem 0;
+}
+canvas.vc { display: block; width: 100%; }
+.viz-controls {
+  padding: 0.8rem 1.2rem;
+  display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center;
+  border-top: 1px solid var(--border);
+}
+.viz-stats {
+  display: flex; gap: 1.8rem; padding: 0.7rem 1.2rem;
+  border-top: 1px solid var(--border); flex-wrap: wrap;
+}
+.vstat { display: flex; flex-direction: column; gap: 0.15rem; }
+.vstat-v { font-family: 'Fira Code', monospace; font-size: 0.9rem; color: var(--amber); }
+.vstat-k { font-family: 'Fira Code', monospace; font-size: 0.55rem; letter-spacing: 0.1em; color: var(--dimmer); text-transform: uppercase; }
+
+.btn {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.7rem; letter-spacing: 0.06em;
+  color: var(--bg); background: var(--amber);
+  border: none; border-radius: 5px;
+  padding: 0.45rem 1rem; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  text-transform: uppercase; white-space: nowrap;
+}
+.btn:hover { background: var(--amber2); }
+.btn:active { transform: scale(0.97); }
+.btn.red { background: var(--red); color: #fff; }
+.btn.red:hover { background: #ff7070; }
+.btn.green { background: var(--green); color: #000; }
+.btn.blue { background: var(--blue); color: #fff; }
+
+input[type=range] {
+  -webkit-appearance: none; height: 3px;
+  background: var(--border); border-radius: 2px; flex: 1;
+  min-width: 80px; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px;
+  border-radius: 50%; background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+}
+.ctrl-lbl {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem; color: var(--dim);
+  white-space: nowrap;
+}
+.badge {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.72rem; color: var(--amber2);
+  background: rgba(232,160,32,0.1);
+  border: 1px solid rgba(232,160,32,0.2);
+  padding: 0.15rem 0.5rem; border-radius: 4px;
+  min-width: 60px; text-align: center;
+}
+
+/* DIVIDER */
+.divider {
+  width: 50px; height: 1px; margin: 4rem auto;
+  background: linear-gradient(90deg, transparent, var(--amber), transparent);
+}
+
+/* INSIGHT BOX */
+.insight {
+  background: linear-gradient(135deg, rgba(232,160,32,0.07), rgba(78,203,138,0.03));
+  border: 1px solid rgba(232,160,32,0.18);
+  border-radius: 12px; padding: 1.4rem 1.8rem; margin: 2rem 0;
+}
+.insight-tag {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.62rem; color: var(--amber);
+  letter-spacing: 0.15em; text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+.insight p { margin: 0; }
+
+/* TABLE */
+table {
+  width: 100%; border-collapse: collapse;
+  margin: 2rem 0; font-size: 0.88rem;
+}
+th {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.62rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--dim);
+  padding: 0.7rem 1rem; border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+td {
+  padding: 0.7rem 1rem; border-bottom: 1px solid var(--border);
+  color: var(--dim);
+}
+td:first-child { color: var(--text); font-weight: 500; }
+tr:last-child td { border-bottom: none; }
+.good { color: var(--green) !important; }
+.bad  { color: var(--red) !important; }
+.best { color: var(--amber2) !important; font-weight: 600; }
+
+/* FOOTER */
+footer {
+  text-align: center; padding: 4rem 2rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem; color: var(--dimmer);
+  border-top: 1px solid var(--border);
+}
+
+/* ANIMATIONS */
+@keyframes rise { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes drift { 0%{transform:translateY(0)} 50%{transform:translateY(-6px)} 100%{transform:translateY(0)} }
+
+@media(max-width:600px){
+  body { font-size: 16px; }
+  main { padding: 0 1.2rem 6rem; }
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<!-- HERO -->
+<header>
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-eyebrow">Module 4 · TurboQuant</div>
+  <h1>The <span class="accent">QJL Lesson</span></h1>
+  <p class="hero-sub">Why a clever residual correction made things worse — and what that taught us about softmax</p>
+  <div class="scroll-cue">scroll to explore ↓</div>
+</header>
+
+<main>
+
+<!-- §1 RESIDUAL -->
+<section id="s1">
+  <div class="sec-num">§ 01</div>
+  <h2>What is a <span class="accent">Residual</span>?</h2>
+
+  <p>PolarQuant compresses a vector and reconstructs it as <strong>x̂</strong>. The reconstruction is good — but not perfect. The difference between the original and reconstruction is called the <strong>residual</strong>:</p>
+
+  <div class="math">residual = x − x̂</div>
+
+  <p>It's not a single number like MSE. It's a <strong>full vector</strong> — the leftover information that quantization failed to capture at every coordinate.</p>
+
+  <div class="callout">
+    Think of PolarQuant as a photographer who takes a photo with a slightly blurry lens. The photo (x̂) is close but not perfect. The residual is the <em>blur</em> — the exact difference between the original scene and the photo.
+  </div>
+
+  <p>The notebook found that after 2-bit PolarQuant, the residual carries <strong>56.5% of the original norm</strong>. More than half the information survives in the residual. Naturally, the question is — can we compress and store the residual too?</p>
+
+  <div class="viz">
+    <div class="viz-label">Residual = Original − Reconstructed (interactive)</div>
+    <canvas class="vc" id="c-residual" height="200"></canvas>
+    <div class="viz-controls">
+      <span class="ctrl-lbl">bits:</span>
+      <input type="range" id="res-bits" min="1" max="4" value="2" step="1">
+      <span class="badge" id="res-bits-badge">2 bits</span>
+      <button class="btn" id="res-new">↺ New Vector</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vstat"><div class="vstat-v" id="res-norm">—</div><div class="vstat-k">Residual / Original Norm</div></div>
+      <div class="vstat"><div class="vstat-v" id="res-mse">—</div><div class="vstat-k">MSE</div></div>
+      <div class="vstat"><div class="vstat-v" id="res-info">—</div><div class="vstat-k">Info Captured</div></div>
+    </div>
+  </div>
+
+  <p>Notice — as you increase bits, the residual gets <em class="g">smaller</em> (less leftover). With 1-bit, the residual is enormous. With 4-bit, it's tiny. This directly shows you how much information each bit-width captures.</p>
+</section>
+
+<!-- §2 QJL -->
+<section id="s2">
+  <div class="sec-num">§ 02</div>
+  <h2>QJL: Compressing the <span class="accent">Residual</span> with 1 Bit</h2>
+
+  <p>The residual is a 128-dimensional float vector. To compress it with just <strong>1 bit per coordinate</strong>, you can only store two values: <code>+1</code> or <code>−1</code>.</p>
+
+  <p>So QJL stores only the <strong>sign</strong> of each residual coordinate — plus one global norm value:</p>
+
+  <pre><span class="c"># What gets stored:</span>
+residual  = [<span class="a">+0.31</span>, <span class="a">-0.08</span>, <span class="a">+0.19</span>, <span class="a">-0.02</span>, ...]
+signs     = [<span class="g">  +1</span>,   <span class="g">-1</span>,   <span class="g">+1</span>,   <span class="g">-1</span>, ...]  <span class="c">← 1 bit each</span>
+‖residual‖ = <span class="a">0.38</span>                              <span class="c">← 1 float (32 bits)</span>
+
+<span class="c"># Reconstruction:</span>
+r_hat = scale_factor × ‖r‖ × Sᵀ @ signs
+      = 0.0098 × 0.38 × Sᵀ @ signs
+      <span class="c">≈ [+0.09, -0.09, +0.09, -0.09, ...]  ← same magnitude everywhere!</span></pre>
+
+  <div class="callout red">
+    The critical flaw: all 128 coordinates get the <em>same reconstructed magnitude</em> (~0.09), regardless of whether the original residual coordinate was 0.31 or 0.02. Magnitudes are lost.
+  </div>
+
+  <p>The result: large residual coordinates are <em class="r">under-corrected</em>, small ones are <em class="r">over-corrected</em>. This random mismatch is exactly the <strong>variance</strong> QJL introduces.</p>
+
+  <div class="viz">
+    <div class="viz-label">QJL Sign Quantization — what gets stored vs what gets lost</div>
+    <canvas class="vc" id="c-qjl" height="220"></canvas>
+    <div class="viz-controls">
+      <button class="btn" id="qjl-step1">① Show Residual</button>
+      <button class="btn red" id="qjl-step2">② Store Only Signs</button>
+      <button class="btn green" id="qjl-step3">③ Reconstruct r̂</button>
+      <button class="btn blue" id="qjl-reset">Reset</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vstat"><div class="vstat-v" id="qjl-storage">160 bits</div><div class="vstat-k">Storage (signs + norm)</div></div>
+      <div class="vstat"><div class="vstat-v" id="qjl-cos">—</div><div class="vstat-k">Cosine Similarity</div></div>
+      <div class="vstat"><div class="vstat-v" id="qjl-lost">Magnitudes lost</div><div class="vstat-k">What QJL throws away</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- §3 BIAS VARIANCE -->
+<section id="s3">
+  <div class="sec-num">§ 03</div>
+  <h2>Bias vs <span class="accent">Variance</span> — The Archer Analogy</h2>
+
+  <p>QJL reduces <strong>bias</strong> — the average error across many vectors. But it increases <strong>variance</strong> — the spread of errors for individual coordinates. Understanding why this matters requires understanding these two concepts.</p>
+
+  <h3>The Archer Analogy</h3>
+
+  <p>Imagine two archers shooting at a bullseye. The bullseye is the <strong>true attention score</strong>.</p>
+
+  <div class="viz">
+    <div class="viz-label">Archer analogy — bias vs variance</div>
+    <canvas class="vc" id="c-archer" height="280"></canvas>
+    <div class="viz-controls">
+      <button class="btn" id="arch-a">Archer A (High Bias, Low Variance)</button>
+      <button class="btn red" id="arch-b">Archer B (Low Bias, High Variance)</button>
+      <button class="btn green" id="arch-both">Show Both</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vstat"><div class="vstat-v" id="arch-bias">—</div><div class="vstat-k">Bias</div></div>
+      <div class="vstat"><div class="vstat-v" id="arch-var">—</div><div class="vstat-k">Variance</div></div>
+      <div class="vstat"><div class="vstat-v" id="arch-verdict">—</div><div class="vstat-k">For Attention</div></div>
+    </div>
+  </div>
+
+  <p><strong>Archer A (PolarQuant only):</strong> All arrows land slightly to the left — consistent error. But they're clustered together. Softmax sees similar errors everywhere — stays stable.</p>
+
+  <p><strong>Archer B (PolarQuant + QJL):</strong> Arrows are centered on average — but scattered randomly. One arrow might fly far to the right. Softmax exponentially amplifies that one outlier.</p>
+
+  <div class="insight">
+    <div class="insight-tag">⚡ Key Insight</div>
+    <p>For attention: <strong>low variance beats low bias</strong>. A consistent small error is far less damaging than a random large one — because softmax is exponential, not linear.</p>
+  </div>
+</section>
+
+<!-- §4 SOFTMAX -->
+<section id="s4">
+  <div class="sec-num">§ 04</div>
+  <h2>Why Softmax <span class="accent">Amplifies</span> Variance</h2>
+
+  <p>Softmax converts attention scores into probabilities. The formula is exponential:</p>
+
+  <div class="math">softmax(sᵢ) = exp(sᵢ) / Σ exp(sⱼ)</div>
+
+  <p>This means a small increase in one score causes a <strong>disproportionately large</strong> increase in its probability weight — at the expense of all others.</p>
+
+  <p>Drag the slider below to add noise to the top attention score and watch what happens to the weights:</p>
+
+  <div class="viz">
+    <div class="viz-label">Softmax amplification — add noise to one score</div>
+    <canvas class="vc" id="c-softmax" height="220"></canvas>
+    <div class="viz-controls">
+      <span class="ctrl-lbl">noise on top score:</span>
+      <input type="range" id="sm-noise" min="-0.5" max="0.5" step="0.01" value="0">
+      <span class="badge" id="sm-noise-badge">±0.00</span>
+      <button class="btn" id="sm-reset-btn">Reset</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vstat"><div class="vstat-v" id="sm-top-w">—</div><div class="vstat-k">Top Token Weight</div></div>
+      <div class="vstat"><div class="vstat-v" id="sm-shift">—</div><div class="vstat-k">Weight Shift</div></div>
+      <div class="vstat"><div class="vstat-v" id="sm-verdict">Stable</div><div class="vstat-k">Attention Status</div></div>
+    </div>
+  </div>
+
+  <p>Notice how even a small noise of <code>+0.2</code> on the top score dramatically changes the weight distribution. This is the danger of high variance — softmax turns small random errors into large attention shifts.</p>
+
+  <div class="callout red">
+    QJL's random per-coordinate noise → some scores randomly too high → softmax exponentially amplifies them → wrong output. Even though average error (bias) is lower.
+  </div>
+</section>
+
+<!-- §5 TURBO4 -->
+<section id="s5">
+  <div class="sec-num">§ 05</div>
+  <h2>The <span class="accent">turbo4</span> Resurrection</h2>
+
+  <p>This is one of the most interesting stories in the TurboQuant project. The original turbo4 was broken by 7 implementation bugs (perplexity = 679, completely unusable). After fixing the bugs:</p>
+
+  <table>
+    <tr><th>Version</th><th>Strategy</th><th>Centroids</th><th>PPL</th><th>Status</th></tr>
+    <tr><td>Original turbo4 (buggy)</td><td>PQ3 + QJL1</td><td>8</td><td class="bad">679</td><td class="bad">Broken</td></tr>
+    <tr><td>turbo4 (bugs fixed)</td><td>PQ3 + QJL1</td><td>8</td><td>6.19</td><td>Working</td></tr>
+    <tr><td>turbo4 (QJL disabled)</td><td>PQ3 only</td><td>8</td><td>6.18</td><td class="good">QJL was hurting!</td></tr>
+    <tr><td><strong>New turbo4</strong></td><td>PQ4 only</td><td class="best">16</td><td class="best">6.125</td><td class="best">Best ✓</td></tr>
+  </table>
+
+  <p>The fix journey revealed something fundamental: spending all 4 bits on PolarQuant centroids (16 centroids) beats spending 3 bits on PolarQuant + 1 bit on QJL residual (8 centroids + signs).</p>
+
+  <h3>Why More Centroids Wins</h3>
+
+  <p>Going from 8 → 16 centroids directly halves the slot width:</p>
+
+  <div class="math">slot width = range / (n_levels − 1)
+8 centroids:  range / 7  → larger gaps
+16 centroids: range / 15 → smaller gaps → smaller error</div>
+
+  <p>And critically — this smaller error is <strong>consistent across every coordinate</strong>. No random noise. No variance explosion through softmax.</p>
+
+  <div class="viz">
+    <div class="viz-label">Centroids vs attention quality — interactive comparison</div>
+    <canvas class="vc" id="c-centroids" height="240"></canvas>
+    <div class="viz-controls">
+      <button class="btn" id="cent-old">Old turbo4 (8 centroids + QJL)</button>
+      <button class="btn green" id="cent-new">New turbo4 (16 centroids)</button>
+      <button class="btn red" id="cent-both">Compare Both</button>
+    </div>
+    <div class="viz-stats">
+      <div class="vstat"><div class="vstat-v" id="cent-levels">—</div><div class="vstat-k">Centroids</div></div>
+      <div class="vstat"><div class="vstat-v" id="cent-slot">—</div><div class="vstat-k">Slot Width</div></div>
+      <div class="vstat"><div class="vstat-v" id="cent-attn">—</div><div class="vstat-k">Attention Quality</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- §6 LESSON -->
+<section id="s6">
+  <div class="sec-num">§ 06</div>
+  <h2>The <span class="accent">Lesson</span></h2>
+
+  <p>Three independent research groups (scos-lab, Arclabs/YATQ, AmesianX) all confirmed the same finding:</p>
+
+  <div class="insight">
+    <div class="insight-tag">📐 The Rule</div>
+    <p>For attention workloads — <strong>more centroids always beats error correction</strong>. Spend every bit on PolarQuant. Never split bits between PolarQuant and QJL.</p>
+  </div>
+
+  <table>
+    <tr><th>Approach</th><th>Bits</th><th>Centroids</th><th>QJL?</th><th>Attention Quality</th></tr>
+    <tr><td>turbo3</td><td>3</td><td>4 (PQ2)</td><td>Yes</td><td>Good enough</td></tr>
+    <tr><td>Old turbo4</td><td>4</td><td>8 (PQ3)</td><td class="bad">Yes</td><td class="bad">Worse (variance)</td></tr>
+    <tr><td><strong>New turbo4</strong></td><td>4</td><td class="best">16 (PQ4)</td><td class="good">No</td><td class="best">Best ✓</td></tr>
+  </table>
+
+  <p>QJL's mathematical guarantee — unbiased inner products — doesn't translate to better attention quality. Theory said it should help. Practice said it hurts. The exponential nature of softmax is the reason.</p>
+
+  <div class="divider"></div>
+
+  <h3>The Complete Chain — All 4 Modules</h3>
+
+  <pre><span class="c">Module 1:</span> Naive quantization fails
+          → outliers stretch range → slots wasted
+
+<span class="c">Module 2:</span> Rotate first (WHT + random signs)
+          → outliers spread → range collapses
+          → coords follow N(0, 1/d)
+
+<span class="c">Module 3:</span> Exploit N(0,1/d)
+          → Lloyd-Max optimal centroids
+          → PolarQuant = 7× compression, 0.94 cosine
+
+<span class="c">Module 4:</span> More centroids > error correction
+          → QJL adds variance → softmax amplifies it
+          → new turbo4 = pure 4-bit PolarQuant → beats q4_0</pre>
+</section>
+
+</main>
+
+<footer>
+  A visual essay on TurboQuant / PolarQuant — Module 4<br>
+  Simulations are illustrative approximations, not exact library outputs.
+</footer>
+
+<script>
+/* ── UTILS ── */
+const TAU = Math.PI * 2;
+function sr(s){ let x=s>>>0; return ()=>{ x=Math.imul(1664525,x)+1013904223>>>0; return x/0x100000000; }; }
+function gr(r){ let u,v; do{u=r();}while(!u); do{v=r();}while(!v); return Math.sqrt(-2*Math.log(u))*Math.cos(TAU*v); }
+function clamp(x,a,b){ return Math.max(a,Math.min(b,x)); }
+function norm(v){ return Math.sqrt(v.reduce((s,x)=>s+x*x,0)); }
+function dot(a,b){ return a.reduce((s,x,i)=>s+x*b[i],0); }
+
+function setupC(id, h){
+  const cv=document.getElementById(id);
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.offsetWidth*dpr, H=(h||200)*dpr;
+  cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  return {ctx, W:cv.offsetWidth, H:h||200};
+}
+
+const C={ amber:'#e8a020', amber2:'#f5c842', red:'#e05050', green:'#4ecb8a', blue:'#4a9ef0', purple:'#b07aff', dim:'#3a3020' };
+
+/* progress bar */
+window.addEventListener('scroll',()=>{
+  const p=window.scrollY/(document.body.scrollHeight-window.innerHeight)*100;
+  document.getElementById('prog').style.width=p+'%';
+});
+
+/* intersection observer */
+const obs=new IntersectionObserver(entries=>entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('vis'); }),{threshold:0.08});
+document.querySelectorAll('section').forEach(s=>obs.observe(s));
+
+/* hero canvas */
+(()=>{
+  const cv=document.getElementById('hero-canvas');
+  const ctx=cv.getContext('2d');
+  let W,H,pts=[];
+  function resize(){ W=cv.width=cv.offsetWidth; H=cv.height=cv.offsetHeight; }
+  function init(){ pts=[]; for(let i=0;i<60;i++) pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:Math.random()*1.5+.5}); }
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,TAU);
+      ctx.fillStyle='rgba(232,160,32,0.6)'; ctx.fill();
+    });
+    for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<100){
+        ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y);
+        ctx.strokeStyle=`rgba(232,160,32,${(1-d/100)*.2})`; ctx.lineWidth=.5; ctx.stroke();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  window.addEventListener('resize',()=>{resize();init();});
+  resize(); init(); frame();
+})();
+
+/* ═══════ §1 RESIDUAL VIZ ═══════ */
+(()=>{
+  const D=48; let seed=42;
+  function makeVec(s){
+    const r=sr(s);
+    const v=Array.from({length:D},()=>gr(r)*0.5);
+    [3,12,27,40].forEach(i=>v[i]=gr(r)*2.5);
+    return v;
+  }
+  function wht(v){
+    const n=v.length,o=v.slice();
+    for(let h=1;h<n;h<<=1) for(let i=0;i<n;i+=h*2) for(let j=0;j<h;j++){
+      const a=o[i+j],b=o[i+j+h]; o[i+j]=a+b; o[i+j+h]=a-b;
+    }
+    const sq=Math.sqrt(n); return o.map(x=>x/sq);
+  }
+  function makeSign(n,s){ const r=sr(s); return Array.from({length:n},()=>r()>.5?1:-1); }
+  function rotate(v,s1,s2){ const p=v.map((x,i)=>x*s1[i]); const t=wht(p); return t.map((x,i)=>x*s2[i]); }
+  function invRotate(v,s1,s2){ const f=v.map((x,i)=>x*s2[i]); const t=wht(f); return t.map((x,i)=>x*s1[i]); }
+  function getOpt(bits){ const s=1/Math.sqrt(D); const t={1:[-0.7979,0.7979],2:[-1.5104,-0.4528,0.4528,1.5104],3:[-2.1518,-1.3439,-0.756,-0.2451,0.2451,0.756,1.3439,2.1518],4:[-2.4,-1.84,-1.44,-1.1,-0.8,-0.52,-0.26,-0.084,0.084,0.26,0.52,0.8,1.1,1.44,1.84,2.4]}; return t[bits].map(x=>x*s); }
+  function quant(v,cents){ return v.map(x=>{ let bi=0,bd=Infinity; cents.forEach((c,i)=>{ const d=Math.abs(x-c); if(d<bd){bd=d;bi=i;} }); return cents[bi]; }); }
+
+  let x=makeVec(seed);
+  const s1=makeSign(D,seed+100),s2=makeSign(D,seed+200);
+
+  function compute(bits){
+    const cents=getOpt(bits);
+    const n=norm(x); const xu=x.map(v=>v/n);
+    const y=rotate(xu,s1,s2);
+    const yq=quant(y,cents);
+    const yn=norm(yq); const yc=yq.map(v=>v/(yn||1));
+    const xhu=invRotate(yc,s1,s2);
+    const xh=xhu.map(v=>v*n);
+    const res=x.map((v,i)=>v-xh[i]);
+    const mse=res.reduce((s,v)=>s+v*v,0)/D;
+    const rn=norm(res)/norm(x);
+    return {xh,res,mse,rn};
+  }
+
+  function draw(){
+    const bits=parseInt(document.getElementById('res-bits').value);
+    const {xh,res,mse,rn}=compute(bits);
+    const {ctx,W,H}=setupC('c-residual',200);
+    ctx.clearRect(0,0,W,H);
+    const pad=10, bw=(W-pad*2)/D;
+    const allV=[...x,...xh,...res];
+    const mx=Math.max(...allV.map(Math.abs),0.01);
+    const midY=H/2;
+    const sc=(H/2-16)/mx;
+
+    ctx.beginPath(); ctx.moveTo(pad,midY); ctx.lineTo(W-pad,midY);
+    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1; ctx.stroke();
+
+    // Original (dim blue)
+    x.forEach((v,i)=>{ const bh=Math.abs(v)*sc,bx=pad+i*bw,by=v>=0?midY-bh:midY; ctx.fillStyle='rgba(74,158,240,0.35)'; ctx.fillRect(bx+.5,by,bw-1,bh); });
+    // Reconstructed (dim green)
+    xh.forEach((v,i)=>{ const bh=Math.abs(v)*sc,bx=pad+i*bw,by=v>=0?midY-bh:midY; ctx.fillStyle='rgba(78,203,138,0.35)'; ctx.fillRect(bx+.5,by,bw-1,bh); });
+    // Residual (bright red)
+    res.forEach((v,i)=>{ const bh=Math.abs(v)*sc,bx=pad+i*bw,by=v>=0?midY-bh:midY; ctx.fillStyle='rgba(224,80,80,0.85)'; ctx.fillRect(bx+.5,by,bw-1,bh); });
+
+    // Legend
+    ctx.font='10px Fira Code,monospace';
+    [[C.blue,'■ original'],[C.green,'■ reconstructed'],[C.red,'■ residual']].forEach(([col,lbl],i)=>{
+      ctx.fillStyle=col; ctx.fillText(lbl, pad+i*140, 14);
+    });
+
+    document.getElementById('res-bits-badge').textContent=`${bits} bit${bits>1?'s':''}`;
+    document.getElementById('res-norm').textContent=(rn*100).toFixed(1)+'%';
+    document.getElementById('res-mse').textContent=mse.toFixed(5);
+    document.getElementById('res-info').textContent=((1-rn)*100).toFixed(1)+'% captured';
+  }
+
+  document.getElementById('res-bits').addEventListener('input',draw);
+  document.getElementById('res-new').addEventListener('click',()=>{ seed=(seed+17)%9999; x=makeVec(seed); draw(); });
+  draw();
+  window.addEventListener('resize',draw);
+})();
+
+/* ═══════ §2 QJL VIZ ═══════ */
+(()=>{
+  const D=32;
+  const r=sr(77);
+  const residual=Array.from({length:D},()=>gr(r)*0.3);
+  let mode=0;
+
+  function draw(){
+    const {ctx,W,H}=setupC('c-qjl',220);
+    ctx.clearRect(0,0,W,H);
+    const pad=10, bw=(W-pad*2)/D;
+    const mx=Math.max(...residual.map(Math.abs),0.01);
+    const midY=H/2;
+    const sc=(H/2-20)/mx;
+
+    ctx.beginPath(); ctx.moveTo(pad,midY); ctx.lineTo(W-pad,midY);
+    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1; ctx.stroke();
+
+    const signs=residual.map(v=>v>=0?1:-1);
+    const rn=Math.sqrt(residual.reduce((s,v)=>s+v*v,0)/D);
+    const scaleFactor=Math.sqrt(Math.PI/2)/D;
+    const rhat=signs.map(s=>scaleFactor*norm(residual)*s*Math.sqrt(D));
+
+    if(mode===0){
+      // Just residual
+      residual.forEach((v,i)=>{
+        const bh=Math.abs(v)*sc,bx=pad+i*bw,by=v>=0?midY-bh:midY;
+        ctx.fillStyle='rgba(224,80,80,0.8)'; ctx.fillRect(bx+.5,by,bw-1,bh);
+        // magnitude label for a few
+        if(i<4){ ctx.font='8px Fira Code,monospace'; ctx.fillStyle='rgba(237,224,204,0.6)'; ctx.textAlign='center'; ctx.fillText(Math.abs(v).toFixed(2),bx+bw/2,v>=0?midY-bh-6:midY+bh+12); }
+      });
+      ctx.font='11px Fira Code,monospace'; ctx.fillStyle=C.red; ctx.textAlign='left';
+      ctx.fillText('Residual vector — magnitudes AND signs visible', pad, 18);
+    } else if(mode===1){
+      // Signs only (same height for all)
+      signs.forEach((s,i)=>{
+        const bh=40,bx=pad+i*bw,by=s>=0?midY-bh:midY;
+        ctx.fillStyle='rgba(176,122,255,0.8)'; ctx.fillRect(bx+.5,by,bw-1,bh);
+      });
+      ctx.font='11px Fira Code,monospace'; ctx.fillStyle=C.purple; ctx.textAlign='left';
+      ctx.fillText('Stored: only signs (+1 or -1) — magnitudes GONE', pad, 18);
+      // Show what was lost
+      residual.forEach((v,i)=>{
+        const bh=Math.abs(v)*sc,bx=pad+i*bw,by=v>=0?midY-bh:midY;
+        ctx.strokeStyle='rgba(224,80,80,0.25)'; ctx.lineWidth=1;
+        ctx.setLineDash([2,3]); ctx.strokeRect(bx+.5,by,bw-1,bh); ctx.setLineDash([]);
+      });
+    } else {
+      // Reconstructed r_hat vs original
+      residual.forEach((v,i)=>{ const bh=Math.abs(v)*sc,bx=pad+i*bw,by=v>=0?midY-bh:midY; ctx.fillStyle='rgba(224,80,80,0.25)'; ctx.fillRect(bx+.5,by,bw-1,bh); });
+      rhat.forEach((v,i)=>{
+        const bh=Math.abs(v)*sc,bx=pad+i*bw,by=v>=0?midY-bh:midY;
+        ctx.fillStyle='rgba(78,203,138,0.8)'; ctx.fillRect(bx+.5,by,bw-1,bh);
+      });
+      ctx.font='11px Fira Code,monospace'; ctx.fillStyle=C.green; ctx.textAlign='left';
+      ctx.fillText('Green = r̂ (reconstructed)  Red = original residual', pad, 18);
+      // cosine
+      const cos=dot(residual,rhat)/(norm(residual)*norm(rhat));
+      document.getElementById('qjl-cos').textContent=cos.toFixed(3);
+    }
+  }
+
+  document.getElementById('qjl-step1').addEventListener('click',()=>{ mode=0; draw(); });
+  document.getElementById('qjl-step2').addEventListener('click',()=>{ mode=1; draw(); });
+  document.getElementById('qjl-step3').addEventListener('click',()=>{ mode=2; draw(); });
+  document.getElementById('qjl-reset').addEventListener('click',()=>{ mode=0; document.getElementById('qjl-cos').textContent='—'; draw(); });
+  draw();
+  window.addEventListener('resize',draw);
+})();
+
+/* ═══════ §3 ARCHER VIZ ═══════ */
+(()=>{
+  let archerMode='none';
+
+  function drawArcher(ctx,W,H,cx,cy,R,arrows,color,label){
+    // Target rings
+    [1,.7,.4,.15].forEach((f,i)=>{
+      ctx.beginPath(); ctx.arc(cx,cy,R*f,0,TAU);
+      ctx.strokeStyle=`rgba(232,160,32,${0.15+i*0.1})`; ctx.lineWidth=1; ctx.stroke();
+    });
+    // Bullseye
+    ctx.beginPath(); ctx.arc(cx,cy,R*.08,0,TAU);
+    ctx.fillStyle='rgba(232,160,32,0.5)'; ctx.fill();
+
+    // Arrows
+    arrows.forEach(([ax,ay])=>{
+      ctx.beginPath(); ctx.arc(cx+ax*R,cy+ay*R,5,0,TAU);
+      ctx.fillStyle=color+'cc'; ctx.fill();
+      ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
+    });
+
+    // Label
+    ctx.font='bold 11px Cinzel,serif';
+    ctx.fillStyle=color; ctx.textAlign='center';
+    ctx.fillText(label,cx,cy+R+20);
+  }
+
+  function draw(){
+    const {ctx,W,H}=setupC('c-archer',280);
+    ctx.clearRect(0,0,W,H);
+    const R=100;
+
+    if(archerMode==='a'||archerMode==='both'){
+      // High bias, low variance — arrows clustered but offset
+      const cx=archerMode==='both'?W/4:W/2, cy=H/2-10;
+      const arrowsA=[[-0.35,-0.1],[-0.3,0.05],[-0.4,0],[-0.32,-0.08],[-0.38,0.06],[-0.33,0.02]];
+      drawArcher(ctx,W,H,cx,cy,R,arrowsA,C.blue,'Archer A\n(High Bias, Low Variance)');
+      if(archerMode==='a'){
+        document.getElementById('arch-bias').textContent='High (−0.35σ offset)';
+        document.getElementById('arch-var').textContent='Low (tight cluster)';
+        document.getElementById('arch-verdict').textContent='✓ Stable for attention';
+      }
+    }
+    if(archerMode==='b'||archerMode==='both'){
+      const cx=archerMode==='both'?W*3/4:W/2, cy=H/2-10;
+      const arrowsB=[[0.1,0.5],[-.4,.1],[.5,-.3],[-.1,-.5],[.4,.3],[-.3,.4]];
+      drawArcher(ctx,W,H,cx,cy,R,arrowsB,C.red,'Archer B\n(Low Bias, High Variance)');
+      if(archerMode==='b'){
+        document.getElementById('arch-bias').textContent='Low (centered)';
+        document.getElementById('arch-var').textContent='High (scattered)';
+        document.getElementById('arch-verdict').textContent='✗ Dangerous for attention';
+      }
+    }
+    if(archerMode==='both'){
+      document.getElementById('arch-bias').textContent='A: High  B: Low';
+      document.getElementById('arch-var').textContent='A: Low  B: High';
+      document.getElementById('arch-verdict').textContent='A wins for attention';
+    }
+    if(archerMode==='none'){
+      ctx.font='12px Fira Code,monospace'; ctx.fillStyle=C.dim;
+      ctx.textAlign='center';
+      ctx.fillText('Click a button to show archers', W/2, H/2);
+    }
+  }
+
+  document.getElementById('arch-a').addEventListener('click',()=>{ archerMode='a'; draw(); });
+  document.getElementById('arch-b').addEventListener('click',()=>{ archerMode='b'; draw(); });
+  document.getElementById('arch-both').addEventListener('click',()=>{ archerMode='both'; draw(); });
+  draw();
+  window.addEventListener('resize',draw);
+})();
+
+/* ═══════ §4 SOFTMAX VIZ ═══════ */
+(()=>{
+  const baseScores=[1.0, 0.7, 0.5, 0.3, 0.2, 0.1, 0.0, -0.1];
+  const N=baseScores.length;
+
+  function softmax(scores){
+    const mx=Math.max(...scores);
+    const exps=scores.map(s=>Math.exp(s-mx));
+    const sum=exps.reduce((a,b)=>a+b,0);
+    return exps.map(e=>e/sum);
+  }
+
+  function draw(){
+    const noise=parseFloat(document.getElementById('sm-noise').value);
+    const noisyScores=baseScores.map((s,i)=>i===0?s+noise:s);
+    const wTrue=softmax(baseScores);
+    const wNoisy=softmax(noisyScores);
+
+    const {ctx,W,H}=setupC('c-softmax',220);
+    ctx.clearRect(0,0,W,H);
+    const pad={l:40,r:20,t:30,b:30};
+    const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+    const bw=pw/N;
+    const maxW=Math.max(...wTrue,...wNoisy);
+
+    // Grid
+    [0.25,0.5,0.75].forEach(f=>{
+      const y=pad.t+ph*(1-f/maxW);
+      if(y>pad.t&&y<pad.t+ph){
+        ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+pw,y);
+        ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1; ctx.stroke();
+        ctx.font='8px Fira Code,monospace'; ctx.fillStyle='rgba(122,106,84,0.6)';
+        ctx.textAlign='right'; ctx.fillText((f*100).toFixed(0)+'%',pad.l-4,y+3);
+      }
+    });
+
+    wTrue.forEach((w,i)=>{
+      const bh=w/maxW*ph, bx=pad.l+i*bw;
+      ctx.fillStyle='rgba(74,158,240,0.4)';
+      ctx.fillRect(bx+2,pad.t+ph-bh,bw/2-2,bh);
+    });
+    wNoisy.forEach((w,i)=>{
+      const bh=w/maxW*ph, bx=pad.l+i*bw+bw/2;
+      const col=i===0&&noise!==0?C.red:C.amber;
+      ctx.fillStyle=col+(i===0&&noise!==0?'cc':'66');
+      ctx.fillRect(bx,pad.t+ph-bh,bw/2-2,bh);
+    });
+
+    // Legend
+    ctx.font='9px Fira Code,monospace';
+    ctx.fillStyle=C.blue; ctx.textAlign='left'; ctx.fillText('■ true weights',pad.l,18);
+    ctx.fillStyle=C.amber; ctx.fillText('■ noisy weights',pad.l+120,18);
+    ctx.fillStyle='rgba(122,106,84,0.6)'; ctx.fillText('token index →',pad.l,H-8);
+
+    // Token labels
+    baseScores.forEach((_,i)=>{
+      ctx.fillStyle='rgba(122,106,84,0.5)'; ctx.textAlign='center';
+      ctx.fillText(`t${i}`,pad.l+i*bw+bw/2,pad.t+ph+14);
+    });
+
+    const shift=Math.abs(wNoisy[0]-wTrue[0])*100;
+    document.getElementById('sm-noise-badge').textContent=(noise>=0?'+':'')+noise.toFixed(2);
+    document.getElementById('sm-top-w').textContent=(wNoisy[0]*100).toFixed(1)+'%';
+    document.getElementById('sm-shift').textContent=(noise===0?'0':'+'+shift.toFixed(1))+'%';
+    const verdict=shift>5?'⚠ Distorted':shift>2?'Slight shift':'Stable';
+    const vcol=shift>5?C.red:shift>2?C.amber:C.green;
+    document.getElementById('sm-verdict').textContent=verdict;
+    document.getElementById('sm-verdict').style.color=vcol;
+  }
+
+  document.getElementById('sm-noise').addEventListener('input',draw);
+  document.getElementById('sm-reset-btn').addEventListener('click',()=>{ document.getElementById('sm-noise').value=0; draw(); });
+  draw();
+  window.addEventListener('resize',draw);
+})();
+
+/* ═══════ §5 CENTROIDS VIZ ═══════ */
+(()=>{
+  let mode='none';
+  const D=128;
+  const sigma=1/Math.sqrt(D);
+
+  function getOpt(bits){
+    const t={
+      3:[-2.1518,-1.3439,-0.756,-0.2451,0.2451,0.756,1.3439,2.1518],
+      4:[-2.4,-1.84,-1.44,-1.1,-0.8,-0.52,-0.26,-0.084,0.084,0.26,0.52,0.8,1.1,1.44,1.84,2.4]
+    };
+    return t[bits].map(x=>x*sigma);
+  }
+
+  function drawBell(ctx,W,H,cents,color,label,xoff=0){
+    const pad={l:20+xoff,r:20,t:30,b:30};
+    const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+    const xr=4*sigma;
+    const tx=x=>pad.l+(x+xr)/(2*xr)*pw;
+    const ymax=1/(sigma*Math.sqrt(TAU));
+    const ty=y=>pad.t+(1-y/ymax)*ph;
+
+    // Fill
+    ctx.beginPath();
+    for(let px=0;px<=pw;px++){
+      const xv=-xr+(px/pw)*2*xr;
+      const yv=Math.exp(-xv*xv/(2*sigma*sigma))/(sigma*Math.sqrt(TAU));
+      px===0?ctx.moveTo(pad.l+px,ty(yv)):ctx.lineTo(pad.l+px,ty(yv));
+    }
+    ctx.lineTo(pad.l+pw,pad.t+ph); ctx.lineTo(pad.l,pad.t+ph); ctx.closePath();
+    ctx.fillStyle=color+'18'; ctx.fill();
+    ctx.beginPath();
+    for(let px=0;px<=pw;px++){
+      const xv=-xr+(px/pw)*2*xr;
+      const yv=Math.exp(-xv*xv/(2*sigma*sigma))/(sigma*Math.sqrt(TAU));
+      px===0?ctx.moveTo(pad.l+px,ty(yv)):ctx.lineTo(pad.l+px,ty(yv));
+    }
+    ctx.strokeStyle=color+'60'; ctx.lineWidth=1.5; ctx.stroke();
+
+    // Centroid lines
+    cents.forEach(c=>{
+      const sx=tx(c);
+      ctx.beginPath(); ctx.moveTo(sx,pad.t); ctx.lineTo(sx,pad.t+ph);
+      ctx.strokeStyle=color+'aa'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx,ty(Math.exp(-c*c/(2*sigma*sigma))/(sigma*Math.sqrt(TAU))),4,0,TAU);
+      ctx.fillStyle=color; ctx.fill();
+    });
+
+    // Label
+    ctx.font='bold 10px Cinzel,serif'; ctx.fillStyle=color;
+    ctx.textAlign='center'; ctx.fillText(label,pad.l+pw/2,20);
+    ctx.font='9px Fira Code,monospace'; ctx.fillStyle=color+'aa';
+    ctx.fillText(`${cents.length} centroids`,pad.l+pw/2,32);
+
+    // Slot width arrow
+    if(cents.length>=2){
+      const sw=(cents[1]-cents[0]);
+      const sx1=tx(cents[0]),sx2=tx(cents[1]);
+      const ay=pad.t+ph+18;
+      ctx.beginPath(); ctx.moveTo(sx1,ay); ctx.lineTo(sx2,ay);
+      ctx.strokeStyle=color+'80'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx1,ay-3); ctx.lineTo(sx1,ay+3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx2,ay-3); ctx.lineTo(sx2,ay+3); ctx.stroke();
+      ctx.font='8px Fira Code,monospace'; ctx.fillStyle=color+'80';
+      ctx.textAlign='center'; ctx.fillText('slot',( sx1+sx2)/2,ay-6);
+    }
+  }
+
+  function draw(){
+    const {ctx,W,H}=setupC('c-centroids',240);
+    ctx.clearRect(0,0,W,H);
+
+    if(mode==='old'){
+      drawBell(ctx,W,H,getOpt(3),C.red,'Old turbo4 — PQ3+QJL');
+      const sw=(getOpt(3)[1]-getOpt(3)[0]).toFixed(4);
+      document.getElementById('cent-levels').textContent='8 centroids';
+      document.getElementById('cent-slot').textContent=sw;
+      document.getElementById('cent-attn').textContent='⚠ QJL adds variance';
+      document.getElementById('cent-attn').style.color=C.red;
+    } else if(mode==='new'){
+      drawBell(ctx,W,H,getOpt(4),C.green,'New turbo4 — PQ4 only');
+      const sw=(getOpt(4)[1]-getOpt(4)[0]).toFixed(4);
+      document.getElementById('cent-levels').textContent='16 centroids';
+      document.getElementById('cent-slot').textContent=sw;
+      document.getElementById('cent-attn').textContent='✓ Best attention quality';
+      document.getElementById('cent-attn').style.color=C.green;
+    } else if(mode==='both'){
+      const hw=W/2;
+      const tempCv=document.createElement('canvas');
+      tempCv.width=hw*(window.devicePixelRatio||1);
+      tempCv.height=240*(window.devicePixelRatio||1);
+      // Just draw both sides
+      drawBell(ctx,W,H,getOpt(3),C.red,'Old (8 centroids)');
+      // Right side — manually draw
+      const c4=getOpt(4);
+      const pad={l:W/2+10,r:20,t:30,b:30};
+      const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+      const xr=4*sigma;
+      const tx=x=>pad.l+(x+xr)/(2*xr)*pw;
+      const ymax=1/(sigma*Math.sqrt(TAU));
+      const ty=y=>pad.t+(1-y/ymax)*ph;
+      ctx.beginPath();
+      for(let px=0;px<=pw;px++){
+        const xv=-xr+(px/pw)*2*xr;
+        const yv=Math.exp(-xv*xv/(2*sigma*sigma))/(sigma*Math.sqrt(TAU));
+        px===0?ctx.moveTo(pad.l+px,ty(yv)):ctx.lineTo(pad.l+px,ty(yv));
+      }
+      ctx.lineTo(pad.l+pw,pad.t+ph); ctx.lineTo(pad.l,pad.t+ph); ctx.closePath();
+      ctx.fillStyle=C.green+'18'; ctx.fill();
+      c4.forEach(c=>{ const sx=tx(c); ctx.beginPath(); ctx.moveTo(sx,pad.t); ctx.lineTo(sx,pad.t+ph); ctx.strokeStyle=C.green+'aa'; ctx.lineWidth=1.5; ctx.stroke(); });
+      ctx.font='bold 10px Cinzel,serif'; ctx.fillStyle=C.green; ctx.textAlign='center';
+      ctx.fillText('New (16 centroids)',pad.l+pw/2,20);
+      // Divider
+      ctx.beginPath(); ctx.moveTo(W/2,20); ctx.lineTo(W/2,H-20);
+      ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1; ctx.stroke();
+      document.getElementById('cent-levels').textContent='8 vs 16';
+      document.getElementById('cent-slot').textContent='Old 2× wider';
+      document.getElementById('cent-attn').textContent='New wins by ~8%';
+      document.getElementById('cent-attn').style.color=C.amber;
+    } else {
+      ctx.font='12px Fira Code,monospace'; ctx.fillStyle='rgba(122,106,84,0.6)';
+      ctx.textAlign='center'; ctx.fillText('Click a button to compare',W/2,H/2);
+    }
+  }
+
+  document.getElementById('cent-old').addEventListener('click',()=>{ mode='old'; draw(); });
+  document.getElementById('cent-new').addEventListener('click',()=>{ mode='new'; draw(); });
+  document.getElementById('cent-both').addEventListener('click',()=>{ mode='both'; draw(); });
+  draw();
+  window.addEventListener('resize',draw);
+})();
+</script>
+</body>
+</html>
