@@ -35,7 +35,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Instrument Sans', sans-serif;
-  font-size: 15px;
+  font-size: 16.5px;
   line-height: 1.7;
   overflow-x: hidden;
   cursor: none;
@@ -157,8 +157,8 @@ h1 .sub {
 }
 
 .tagline {
-  font-size: 1rem; color: var(--dim);
-  max-width: 560px; margin: 0 auto 3rem;
+  font-size: 1.08rem; color: var(--dim);
+  max-width: 600px; margin: 0 auto 3rem;
   line-height: 1.7; position: relative;
   opacity: 0; animation: rise 0.8s 0.6s forwards;
 }
@@ -316,8 +316,8 @@ main {
 
 .card-title {
   font-family: 'Fraunces', serif;
-  font-size: 1.15rem; font-weight: 400;
-  color: var(--text); line-height: 1.25;
+  font-size: 1.28rem; font-weight: 400;
+  color: var(--text); line-height: 1.3;
   letter-spacing: -0.01em;
 }
 
@@ -327,7 +327,7 @@ main {
 }
 
 .card-desc {
-  font-size: 0.875rem; color: var(--dim);
+  font-size: 0.96rem; color: var(--dim);
   line-height: 1.65;
 }
 
@@ -393,22 +393,6 @@ main {
 /* ── FEATURED CARD (wide) ── */
 .module-card.featured {
   grid-column: 1 / -1;
-  flex-direction: row;
-}
-.module-card.featured .card-header {
-  border-bottom: none; border-right: 1px solid var(--border);
-  flex-direction: column; min-width: 200px; max-width: 200px;
-}
-.module-card.featured .card-body {
-  padding: 1.5rem;
-}
-
-@media(max-width: 700px) {
-  .module-card.featured { flex-direction: column; }
-  .module-card.featured .card-header {
-    border-right: none; border-bottom: 1px solid var(--border);
-    max-width: none; flex-direction: row;
-  }
 }
 
 /* ── READING PATH ── */
@@ -461,7 +445,7 @@ main {
   margin-bottom: 0.2rem;
 }
 .path-step-content p {
-  font-size: 0.85rem; color: var(--dim);
+  font-size: 0.95rem; color: var(--dim);
 }
 
 /* ── KNOWLEDGE MAP ── */
